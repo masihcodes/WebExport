@@ -1,0 +1,230 @@
+﻿@page "/design-b/login"
+
+@inject HttpClient Http
+
+@inject NavigationManager Navi
+@inject Services.Session Session
+
+@inject ToastService Toast
+
+
+@code
+{
+    private LoginDto _login = new LoginDto
+    {
+        ClientId = "",
+        ClientSecret = ""
+    };
+
+    private string _apiKey = "";
+    private bool _showSecret;
+    private bool _isLoading;
+    private string? _error;
+    public AuthResponseDto? Auth;
+    private ErrorResponseDto? _errorResponse;
+
+
+    private async Task HandleLoginAsync()
+    {
+        if (_isLoading) return;
+
+        if (string.IsNullOrWhiteSpace(_login.ClientId))
+        {
+            Toast.Show(title: "Bitte geben Sie Ihre Client-ID ein.");
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(_login.ClientSecret))
+        {
+            Toast.Show(title: "Bitte geben Sie Ihr Client-Secret ein.");
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(_apiKey))
+        {
+            _error = "Bitte geben Sie Ihren API-Schlüssel ein.";
+            Toast.Error(_error);
+            return;
+        }
+
+        _isLoading = true;
+        _error = null;
+
+        try
+        {
+            using HttpRequestMessage req = new HttpRequestMessage(HttpMethod.Post, requestUri: "api/v1/auth/token");
+            req.Headers.Add(name: "X-API-KEY", _apiKey.Trim());
+            req.Content = JsonContent.Create(_login);
+            using HttpResponseMessage res = await Http.SendAsync(req);
+
+            if (res.IsSuccessStatusCode)
+            {
+                Auth = await res.Content.ReadFromJsonAsync<AuthResponseDto>();
+                if (Auth is null || string.IsNullOrWhiteSpace(Auth.AccessToken))
+                {
+                    Toast.Error(title: "Die API hat keine gültige Token-Antwort geliefert.");
+                    return;
+                }
+
+                Session.SetCredentials(Auth, _apiKey.Trim(), _login.ClientId);
+                Navi.NavigateTo(uri: "/design-b/status");
+            }
+            else
+            {
+                _errorResponse = await res.Content.ReadFromJsonAsync<ErrorResponseDto>();
+                _error = _errorResponse?.Message ?? "Die Anmeldung ist fehlgeschlagen.";
+                Toast.Error(_error);
+            }
+        }
+        catch (HttpRequestException)
+        {
+            _error = "Die API konnte nicht erreicht werden.";
+            Toast.Error(_error);
+        }
+        catch (OperationCanceledException)
+        {
+            _error = "Die Anfrage wurde abgebrochen oder hat zu lange gedauert.";
+            Toast.Error(_error);
+        }
+        catch (Exception)
+        {
+            _error = "Bei der Verarbeitung der Anfrage ist ein unerwarteter Fehler aufgetreten.";
+            Toast.Error(_error);
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+}
+
+<PageTitle>Anmeldung</PageTitle>
+
+<Toaster RichColors="@true" CloseButton="@true"/>
+
+<div class="bg-zinc-50 min-h-screen text-slate-800 antialiased selection:bg-[#a34c27]/20 leading-normal">
+    <header class="border-b border-slate-200 bg-[#302e35] text-white">
+        <div class="mx-auto max-w-6xl px-5 py-6">
+            <span class="flex items-center gap-3">
+                <Icon Name="LucideIcon.Package" Class="size-7"/>
+                <span class="text-lg font-semibold tracking-tight">
+                    WebExport
+                    <span class="font-normal opacity-50">Api</span>
+                </span>
+            </span>
+        </div>
+    </header>
+
+    <main class="flex flex-col items-center justify-between mb-7 gap-4 mx-auto max-w-7xl p-5 sm:p-8">
+
+        <div class="w-full max-w-7xl">
+            <div class="flex flex-col justify-start items-start text-start mb-6">
+                <p class="text-[11px] font-semibold uppercase tracking-widest text-orange-700">Datenportal · Anmeldung</p>
+                <h1 class="mt-2 text-3xl font-semibold leading-tight tracking-tight">Zugang zum Datenportal</h1>
+                <p class="mt-3 text-sm text-slate-500">Zugang mit Client-ID und Client-Secret</p>
+            </div>
+
+            <div class="grid min-h-155 overflow-hidden rounded-3xl border border-slate-400 bg-white shadow-2xl lg:grid-cols-2">
+                <section class="flex flex-col justify-between bg-stone-900 p-8 text-white sm:p-12">
+                    <div class="flex items-center gap-4">
+                        <Icon Name="LucideIcon.Package" Class="size-9"/>
+                        <span class="text-lg font-semibold tracking-tight">
+                            WebExport
+                            <span class="font-normal opacity-60">Api</span>
+                        </span>
+                    </div>
+                    <div class="my-12">
+                        <p class="text-xs font-semibold uppercase tracking-[0.25em] text-white/50">Das Datenportal für Ihr Sortiment</p>
+                        <h2 class="mt-5 text-4xl font-semibold leading-tight tracking-tight sm:text-5xl">Alle Artikeldaten.<br>Ein Zugang.</h2>
+                        <p class="mt-6 text-sm leading-7 text-white/65">Artikel, Preise und Filialbestände Ihres Mandanten– übersichtlich an einem Ort.</p>
+                        <div class="mt-9 space-y-4">
+                            <div class="flex items-center gap-3 text-sm text-white/80">
+                                <span class="rounded-full bg-white/10 p-1">
+                                    <Icon Name="LucideIcon.CheckCheck"></Icon>
+                                </span>
+                                Ein Zugang für Ihren Mandanten
+                            </div>
+                            <div class="flex items-center gap-3 text-sm text-white/80">
+                                <span class="rounded-full bg-white/10 p-1">
+                                    <Icon Name="LucideIcon.CheckCheck"></Icon>
+                                </span>
+                                Artikel bis zur einzelnen Variante
+                            </div>
+                            <div class="flex items-center gap-3 text-sm text-white/80">
+                                <span class="rounded-full bg-white/10 p-1">
+                                    <Icon Name="LucideIcon.CheckCheck"></Icon>
+                                </span>
+                                Bestände nach Filiale anzeigen
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="flex items-center p-8 sm:p-12">
+                    <div class="mx-auto w-full max-w-sm">
+                        <div class="mb-6 flex size-12 items-center justify-center rounded-xl bg-[#f8f4ee] text-[#a34c27]">
+                            <Icon Name="LucideIcon.UserLock"></Icon>
+                        </div>
+                        <p class="text-xs font-semibold uppercase tracking-widest text-[#a34c27]">Willkommen im Datenportal</p>
+                        <h2 class="mt-3 text-3xl font-semibold tracking-tight">Anmelden</h2>
+                        <p class="mb-8 mt-3 text-sm leading-6 text-slate-500">Geben Sie die Zugangsdaten Ihres API-Clients ein.</p>
+                        <EditForm Model="_login" OnValidSubmit="HandleLoginAsync">
+                            <DataAnnotationsValidator/>
+
+                            <label class="block text-xs font-semibold text-slate-600">
+                                Client-ID:
+                                <InputText
+                                    @bind-Value="_login.ClientId"
+                                    autocomplete="on"
+                                    class="mt-2 min-h-11 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-[#a34c27] focus:ring-2 focus:ring-[#a34c27]/20"/>
+                                <ValidationMessage For="@(() => _login.ClientId)" class="mt-1 text-xs text-red-500 animate-pulse"/>
+                            </label>
+
+                            <label class="mt-5 block text-xs font-semibold text-slate-600">
+                                Client-Secret:
+                                <InputText
+                                    @bind-Value="_login.ClientSecret"
+                                    autocomplete="on"
+                                    type="@(_showSecret ? "text" : "password")"
+                                    class="mt-2 min-h-11 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-[#a34c27] focus:ring-2 focus:ring-[#a34c27]/20"/>
+                                <ValidationMessage For="@(() => _login.ClientSecret)" class="mt-1 text-xs text-red-500 animate-pulse"/>
+                            </label>
+
+                            <label class="mt-5 block text-xs font-semibold text-slate-600">
+                                API-Schlüssel:
+                                <InputText
+                                    @bind-Value="_apiKey"
+                                    type="@(_showSecret ? "text" : "password")"
+                                    autocomplete="off"
+                                    class="mt-2 min-h-11 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-[#a34c27] focus:ring-2 focus:ring-[#a34c27]/20"/>
+                            </label>
+
+                            <label class="mt-3 flex items-center gap-2 text-xs text-slate-500">
+                                <InputCheckbox
+                                    @bind-Value="_showSecret"
+                                    class="size-4 accent-[#a34c27]"/>
+                                Secret &#47; API-Schlüssel anzeigen
+                            </label>
+
+                            <button
+                                disabled="@_isLoading"
+                                type="submit"
+                                class="mt-7 flex min-h-12 w-full items-center justify-center gap-3 rounded-lg bg-[#a34c27] px-4 py-3 text-sm font-semibold text-white hover:brightness-90">
+                                @(_isLoading ? "Anmeldung läuft …" : "Anmelden") <Icon Name="LucideIcon.ArrowRight"></Icon>
+                            </button>
+                        </EditForm>
+
+                        <a href="/design-b/status" class="mt-7 inline-block text-xs font-semibold text-[#a34c27] underline underline-offset-4">
+                            Status ansehen →
+                        </a>
+                    </div>
+                </section>
+            </div>
+        </div>
+
+        <footer class="mt-8 flex w-full flex-wrap justify-between gap-3 border-t border-slate-200 pt-5 text-xs text-slate-500">
+            <span class="font-semibold">HILTES Software GmbH · WebExportApi</span>
+            <span class="font-semibold">Postgres · ASP.NET Core · Blazor · HTML · Tailwind CSS · 10.2026</span>
+        </footer>
+    </main>
+</div>

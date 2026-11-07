@@ -1,0 +1,58 @@
+# .NET build and test output
+bin/
+obj/
+artifacts/
+publish/
+TestResults/
+*.trx
+*.coverage
+*.coveragexml
+coverage/
+
+# IDE and operating system files
+.vs/
+.vscode/
+.idea/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+.DS_Store
+._*
+Thumbs.db
+Desktop.ini
+
+# Node dependencies and local build artifacts
+node_modules/
+.npm/
+npm-debug.log*
+*.tsbuildinfo
+dist/
+.vercel/
+.wrangler/
+
+# Quark/Tailwind generated assets and build stamps
+/BlazorApp/tailwind/npm-install.lockhash
+/BlazorApp/tailwind/tailwind-generator.inputs.hash
+/BlazorApp/tailwind/quark-theme.generated.css
+/BlazorApp/tailwind/quark-tailwind-manifest.txt
+/BlazorApp/tailwind/quark-suite-tailwind-manifest.txt
+# Keep quark-tailwind.min.css because wwwroot/index.html loads it.
+/BlazorApp/wwwroot/css/quark-tailwind.css
+
+# Local backend configuration and credentials
+/WebExportAPI/appsettings*.json
+!/WebExportAPI/appsettings.example.json
+.env
+.env.*
+!.env.example
+*.pfx
+*.p12
+*.key
+*.pem
+
+# Database dumps and local backups
+*.backup
+*.dump
+*.bak
+*.sql.gz

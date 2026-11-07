@@ -1,0 +1,21 @@
+# The backend image only needs the API and the shared Models project.
+**
+!Models/
+!Models/**
+!WebExportAPI/
+!WebExportAPI/**
+
+**/bin/
+**/obj/
+**/node_modules/
+**/.git/
+**/.vscode/
+**/.DS_Store
+**/.env*
+**/*.pfx
+**/*.p12
+**/*.key
+**/*.pem
+WebExportAPI/appsettings*.json
+WebExportAPI/Properties/launchSettings.json
+WebExportAPI/*.http

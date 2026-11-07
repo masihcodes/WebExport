@@ -1,0 +1,72 @@
+﻿@inherits LayoutComponentBase
+@inject Services.Session Session
+@inject NavigationManager Navi
+@implements IDisposable
+
+@code{
+    private void ChangeAsync() => _ = InvokeAsync(StateHasChanged);
+    protected override void OnInitialized() => Session.Changed += ChangeAsync;
+    public void Dispose() => Session.Changed -= ChangeAsync;
+
+    private void HandleLogout()
+    {
+        Session.Clear();
+        Navi.NavigateTo(uri: "/design-a/login");
+    }
+
+}
+
+
+<aside class="bg-[#122c3c] text-white lg:fixed lg:inset-y-0 lg:left-0 lg:w-60">
+    <div class="px-6 pb-5 pt-7">
+        <span class="flex items-center gap-3 animate-pulse">
+            <Icon Name="LucideIcon.Package" Class="size-7"></Icon>
+            <span class="text-lg font-semibold tracking-tight">
+                WebExport
+                <span class="font-normal opacity-50">
+                    Api
+                </span>
+            </span>
+        </span>
+        <p class="mt-2 text-[10px] uppercase tracking-[0.2em] text-white/35">Client Datenportal</p>
+    </div>
+    <nav class="flex gap-1 overflow-x-auto px-3 pb-4 lg:mt-8 lg:block lg:space-y-1">
+        <NavLink href="/design-a/status"
+                 class="flex items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium text-white/65 hover:bg-white/5 hover:text-white"
+                 ActiveClass="bg-white/10 text-white">
+            <Icon Name="LucideIcon.Activity"></Icon> Status
+        </NavLink>
+        <NavLink href="/design-a/articles"
+                 class="flex items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium text-white/65 hover:bg-white/5 hover:text-white"
+                 ActiveClass="bg-white/10 text-white">
+            <Icon Name="LucideIcon.Package"></Icon> Artikel
+        </NavLink>
+        <NavLink href="/design-a/prices-stock"
+                 class="flex items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium text-white/65 hover:bg-white/5 hover:text-white"
+                 ActiveClass="bg-white/10 text-white">
+            <Icon Name="LucideIcon.Layers"></Icon> Preise &amp; Bestände
+        </NavLink>
+        <NavLink href="/design-a/branch-stock"
+                 class="flex items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium text-white/65 hover:bg-white/5 hover:text-white"
+                 ActiveClass="bg-white/10 text-white">
+            <Icon Name="LucideIcon.Store"></Icon> Filialbestände
+        </NavLink>
+        <NavLink href="/design-a/categories"
+                 class="flex items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium text-white/65 hover:bg-white/5 hover:text-white"
+                 ActiveClass="bg-white/10 text-white">
+            <Icon Name="LucideIcon.Layers"></Icon> Kategorien
+        </NavLink>
+        <NavLink href="/design-a/master-data"
+                 class="flex items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium text-white/65 hover:bg-white/5 hover:text-white"
+                 ActiveClass="bg-white/10 text-white">
+            <Icon Name="LucideIcon.Grip"></Icon> Stammdaten
+        </NavLink>
+    </nav>
+    <div class="hidden border-t border-white/10 p-5 lg:absolute lg:inset-x-0 lg:bottom-0 lg:block">
+        <p class="mt-2 text-sm font-semibold">@(Session?.Tenant?.Name)</p>
+        <p class="mt-1 text-xs text-white/40">Nr. @(Session?.Tenant?.Number) · @(Session?.Tenant?.BranchCount) Filialen</p>
+        <button @onclick="HandleLogout" class="mt-5 inline-block text-xs text-white/65 underline underline-offset-4 cursor-pointer">Abmelden</button>
+    </div>
+</aside>
+
+@Body

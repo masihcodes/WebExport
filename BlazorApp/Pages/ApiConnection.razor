@@ -1,0 +1,112 @@
+@page "/api-connection"
+@inject HttpClient Http
+
+<PageTitle>API-Verbindung</PageTitle>
+
+<main class="mx-auto max-w-2xl space-y-5 p-6">
+    <h1 class="text-2xl font-semibold">API-Verbindung prüfen</h1>
+
+    <label class="block text-sm font-medium">
+        API-Schlüssel
+        <input type="password"
+               autocomplete="off"
+               @bind="_apiKey"
+               class="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2"/>
+    </label>
+
+    <button type="button"
+            @onclick="CheckConnectionAsync"
+            disabled="@(_isLoading || string.IsNullOrWhiteSpace(_apiKey))"
+            class="rounded-lg bg-teal-700 px-4 py-2 text-white disabled:opacity-50">
+        Verbindung prüfen
+    </button>
+
+    @if (_isLoading)
+    {
+        <p role="status">Anfrage läuft …</p>
+    }
+
+    @if (_error is not null)
+    {
+        <p role="alert" class="text-red-700">@_error</p>
+    }
+
+    @if (_statusCode is not null)
+    {
+        <p class="font-semibold">HTTP @_statusCode</p>
+
+        <pre class="overflow-x-auto rounded-lg bg-slate-100 p-4 text-sm">@_responseBody</pre>
+
+        <span class="overflow-x-auto rounded-lg bg-slate-100 p-4 text-xs block">(@_statusResponse?.Status)</span>
+        <span class="overflow-x-auto rounded-lg bg-slate-100 p-4 text-xs block">(@_statusResponse?.DatabaseAvailable)</span>
+        <span class="overflow-x-auto rounded-lg bg-slate-100 p-4 text-xs block">(@_statusResponse?.Timestamp)</span>
+        <span class="overflow-x-auto rounded-lg bg-slate-100 p-4 text-xs block">(@_statusResponse?.Version)</span>
+
+        <span class="overflow-x-auto rounded-lg bg-slate-100 p-4 text-xs block">(@_errorResponse?.ErrorCode)</span>
+        <span class="overflow-x-auto rounded-lg bg-slate-100 p-4 text-xs block">(@_errorResponse?.Message)</span>
+        <span class="overflow-x-auto rounded-lg bg-slate-100 p-4 text-xs block">(@_errorResponse?.Timestamp)</span>
+    }
+</main>
+
+@code {
+    private string _apiKey = "";
+    private bool _isLoading;
+    private bool _ok;
+    private int? _statusCode;
+    private string? _responseBody;
+    private string? _error;
+    private StatusResponseDto? _statusResponse;
+    private ErrorResponseDto? _errorResponse;
+
+    private async Task CheckConnectionAsync()
+    {
+        if (_isLoading || string.IsNullOrWhiteSpace(_apiKey))
+            return;
+
+        _isLoading = true;
+        _error = null;
+        _statusCode = null;
+        _ok = false;
+        _responseBody = null;
+        _statusResponse = null;
+        _errorResponse = null;
+
+        try
+        {
+            using HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, requestUri: "api/v1/status");
+
+            request.Headers.Add(name: "X-API-KEY", _apiKey.Trim());
+            request.Headers.Add("Accept", "application/json");
+
+            using var response = await Http.SendAsync(request);
+
+            _ok = response.IsSuccessStatusCode;
+            _statusCode = (int)response.StatusCode;
+
+            if (_ok)
+            {
+                _statusResponse = await response.Content.ReadFromJsonAsync<StatusResponseDto>();
+                _responseBody = _statusResponse?.ToString();
+            }
+            else
+            {
+                _errorResponse = await response.Content.ReadFromJsonAsync<ErrorResponseDto>();
+                _responseBody = _errorResponse?.ToString();
+            }
+        }
+        catch (HttpRequestException)
+        {
+            _error = "Die API konnte nicht erreicht werden.";
+        }
+        catch (TaskCanceledException)
+        {
+            _error = "Die Anfrage hat zu lange gedauert.";
+        }
+        finally
+        {
+            _isLoading = false;
+            _apiKey = "";
+        }
+    }
+
+}

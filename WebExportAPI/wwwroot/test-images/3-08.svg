@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="400" height="440" viewBox="0 0 400 440" role="img" aria-label="Demo Trousers, Gray">
+  <rect width="400" height="440" rx="24" fill="#f5f4f0"/>
+  <text x="28" y="40" font-family="sans-serif" font-size="13" fill="#67716b">WEBEXPORT · DEMO</text>
+  <ellipse cx="200" cy="322" rx="100" ry="10" fill="#dedfd9"/>
+  <path d="M130 115H270L286 305H224L201 185L178 305H116Z" fill="#858b94" stroke="#333b3b" stroke-width="3" stroke-linejoin="round"/>
+  <path d="M174 118Q200 136 226 118" fill="none" stroke="#fff" stroke-opacity=".5" stroke-width="3"/>
+  <text x="200" y="376" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#25352e">Trousers</text>
+  <text x="200" y="405" text-anchor="middle" font-family="sans-serif" font-size="16" fill="#67716b">Gray · Sample image</text>
+</svg>

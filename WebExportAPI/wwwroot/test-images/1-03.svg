@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="400" height="440" viewBox="0 0 400 440" role="img" aria-label="Demo Hoodie, Blue">
+  <rect width="400" height="440" rx="24" fill="#f5f4f0"/>
+  <text x="28" y="40" font-family="sans-serif" font-size="13" fill="#67716b">WEBEXPORT · DEMO</text>
+  <ellipse cx="200" cy="322" rx="100" ry="10" fill="#dedfd9"/>
+  <path d="M143 105L170 90Q200 118 230 90L257 105L310 163L270 200L248 173V300H152V173L130 200L90 163Z" fill="#3264a8" stroke="#333b3b" stroke-width="3" stroke-linejoin="round"/>
+  <path d="M174 118Q200 136 226 118" fill="none" stroke="#fff" stroke-opacity=".5" stroke-width="3"/>
+  <text x="200" y="376" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#25352e">Hoodie</text>
+  <text x="200" y="405" text-anchor="middle" font-family="sans-serif" font-size="16" fill="#67716b">Blue · Sample image</text>
+</svg>
