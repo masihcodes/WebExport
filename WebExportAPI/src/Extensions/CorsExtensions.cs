@@ -9,7 +9,10 @@ public static class CorsExtensions
             options.AddPolicy("BlazorClient", policy =>
             {
                 policy
-                    .WithOrigins("https://localhost:4001", "http://localhost:4000")
+                    .WithOrigins(
+                        "https://localhost:4001",
+                        "http://localhost:4000",
+                        "https://webexport-alpha.vercel.app")
                     .WithMethods("GET", "POST")
                     .AllowAnyHeader()
                     .WithExposedHeaders("Retry-After", "ETag", "X-Request-ID");
