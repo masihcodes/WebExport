@@ -1,149 +1,281 @@
-@page "/design-b/sku-detail"
+@page "/design-b/sku-detail/{SkuNumber}"
 @layout DesignBLayout
 
-<main class="mx-auto p-5 sm:p-9 min-w-0">
+@inject HttpClient Http
+@inject NavigationManager Navi
+@inject Services.Session Session
+
+@inject ToastService Toast
+
+
+@code
+{
+  [Parameter]
+  public string SkuNumber { get; set; } = string.Empty;
+
+  private static readonly JsonSerializerOptions ApiJsonOptions = new JsonSerializerOptions(JsonSerializerDefaults.Web)
+  {
+    Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase) }
+  };
+
+  private SkuResponseDto? _sku;
+
+  private bool _isLoading;
+  private string? _skuError;
+
+  protected override async Task OnParametersSetAsync()
+  {
+    if (!Session.IsAuthenticated || string.IsNullOrWhiteSpace(Session.ApiKey))
+    {
+      Session.Clear();
+      Navi.NavigateTo(uri: "/design-b/login");
+      return;
+    }
+
+    await LoadSkuAsync();
+  }
+
+  private async Task LoadSkuAsync()
+  {
+    _isLoading = true;
+    _skuError = "";
+    _sku = null;
+    try
+    {
+      using HttpRequestMessage req = new HttpRequestMessage(HttpMethod.Get, $"/api/v1/skus/{SkuNumber}");
+
+      req.Headers.Add(name: "X-API-KEY", Session?.ApiKey);
+      req.Headers.Authorization = new AuthenticationHeaderValue(scheme: "Bearer", Session?.Current?.AccessToken);
+
+      using HttpResponseMessage res = await Http.SendAsync(req);
+
+      if (res.StatusCode == HttpStatusCode.Unauthorized)
+      {
+        Session?.Clear();
+        Navi.NavigateTo("/design-b/login");
+        return;
+      }
+
+      if (!res.IsSuccessStatusCode)
+      {
+        ErrorResponseDto? apiErr = await res.Content.ReadFromJsonAsync<ErrorResponseDto>();
+        _skuError = apiErr?.Message ?? "Die Anfrage ist fehlgeschlagen.";
+        Toast.Error(_skuError);
+        return;
+      }
+
+      _sku = await res.Content.ReadFromJsonAsync<SkuResponseDto>(ApiJsonOptions);
+    }
+    catch (HttpRequestException)
+    {
+      _skuError = "Die API konnte nicht erreicht werden.";
+      Toast.Error(_skuError);
+    }
+    catch (OperationCanceledException)
+    {
+      _skuError = "Die Anfrage wurde abgebrochen oder hat zu lange gedauert.";
+      Toast.Error(_skuError);
+    }
+    catch (Exception)
+    {
+      _skuError = "Bei der Verarbeitung der Anfrage ist ein unerwarteter Fehler aufgetreten.";
+      Toast.Error(_skuError);
+    }
+    finally
+    {
+      _isLoading = false;
+    }
+  }
+}
+
+<PageTitle>SKU-Detail</PageTitle>
+
+<Toaster RichColors="@true" CloseButton="@true" />
+
+@if (_isLoading)
+{
+  <p role="status">Artikel wird geladen …</p>
+}
+else if (!string.IsNullOrWhiteSpace(_skuError))
+{
+  <p role="alert" class="text-red-700">@_skuError</p>
+}
+else if (_sku is null)
+{
+  <p>Keine Artikeldaten vorhanden.</p>
+}
+else
+{
+  <main class="mx-auto p-5 sm:p-9 min-w-0">
     <div class="mb-7 flex flex-wrap items-end justify-between gap-4">
-        <div>
-            <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#a34c27]">WebExport Studio · SKU-Detail</p>
-            <h1 class="mt-2 text-4xl sm:text-5xl font-semibold leading-tight tracking-tight">Eine Variante. Alle Bestände.</h1>
-            <p class="mt-3 text-sm text-slate-500">Modehaus Muster GmbH</p>
-        </div>
+      <div>
+        <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#a34c27]">Datenportal · SKU-Detail</p>
+        <h1 class="mt-2 text-3xl font-semibold leading-tight tracking-tight">Eine Variante. Alle Bestände.</h1>
+        <p class="mt-3 text-sm text-slate-500">@Session.Tenant?.Name</p>
+      </div>
     </div>
 
     <div class="mb-6 flex flex-wrap items-center justify-between gap-4">
-        <a class="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#a34c27] border border-slate-300 bg-white text-slate-700 hover:bg-slate-50" href="/design-b/article-detail">
-            <Icon Name="LucideIcon.ArrowLeft" Class="size-4" aria-hidden="true" />
-            Zum Artikel
-        </a>
-        <p class="font-mono text-sm text-slate-500">100234-0815-042</p>
+      <a class="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#a34c27] border border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
+         href="/design-b/articles">
+        <Icon Name="LucideIcon.ArrowLeft" Class="size-4" />
+        Zum Artikels
+      </a>
+      <p class="font-mono text-sm text-slate-500">@_sku.Sku</p>
     </div>
     <div class="grid gap-6 xl:grid-cols-[1.2fr_1fr]">
-        <section class="min-w-0 rounded-2xl border border-[#e8e0d7] bg-white p-5 shadow-xs sm:p-6">
-            <div class="mb-5 flex flex-wrap items-center justify-between gap-3">
-                <h2 class="text-base font-semibold tracking-tight">Businesshemd Slim Fit · Größe 42</h2>
-            </div>
-            <dl class="grid grid-cols-1 gap-x-8 gap-y-5 sm:grid-cols-2">
-                <div>
-                    <dt class="text-xs font-medium text-slate-500">SKU</dt>
-                    <dd class="mt-1.5 wrap-break-word text-sm font-medium">100234-0815-042</dd>
-                </div>
-                <div>
-                    <dt class="text-xs font-medium text-slate-500">Artikel</dt>
-                    <dd class="mt-1.5 wrap-break-word text-sm font-medium">
-                        <a class="text-[#a34c27] underline" href="/design-b/article-detail">100234 · Businesshemd Slim Fit</a>
-                    </dd>
-                </div>
-                <div>
-                    <dt class="text-xs font-medium text-slate-500">Farbe</dt>
-                    <dd class="mt-1.5 wrap-break-word text-sm font-medium">
-                        <span class="mr-2 inline-block size-3 rounded-full bg-[#002060]"></span>
-                        Dunkelblau · ID 12 · RGB 0 / 32 / 96
-                    </dd>
-                </div>
-                <div>
-                    <dt class="text-xs font-medium text-slate-500">Lieferantenfarbe</dt>
-                    <dd class="mt-1.5 wrap-break-word text-sm font-medium">Navy</dd>
-                </div>
-                <div>
-                    <dt class="text-xs font-medium text-slate-500">Form</dt>
-                    <dd class="mt-1.5 wrap-break-word text-sm font-medium">Slim</dd>
-                </div>
-                <div>
-                    <dt class="text-xs font-medium text-slate-500">Größe</dt>
-                    <dd class="mt-1.5 wrap-break-word text-sm font-medium">42</dd>
-                </div>
-                <div>
-                    <dt class="text-xs font-medium text-slate-500">Führende Farbe</dt>
-                    <dd class="mt-1.5 wrap-break-word text-sm font-medium">
-                        <span class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset bg-emerald-50 text-emerald-800 ring-emerald-200">Ja</span>
-                    </dd>
-                </div>
-                <div>
-                    <dt class="text-xs font-medium text-slate-500">Gelöscht</dt>
-                    <dd class="mt-1.5 wrap-break-word text-sm font-medium">
-                        <span class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset bg-slate-100 text-slate-700 ring-slate-200">Nein</span>
-                    </dd>
-                </div>
-                <div>
-                    <dt class="text-xs font-medium text-slate-500">VK-Preis</dt>
-                    <dd class="mt-1.5 wrap-break-word text-sm font-medium">
-                        <span class="text-slate-500 line-through">79,95 €</span>
-                    </dd>
-                </div>
-                <div>
-                    <dt class="text-xs font-medium text-slate-500">Reduzierter VK-Preis</dt>
-                    <dd class="mt-1.5 wrap-break-word text-sm font-medium">
-                        <span class="text-xl font-semibold text-[#a34c27]">59,95 €</span>
-                    </dd>
-                </div>
-                <div>
-                    <dt class="text-xs font-medium text-slate-500">Geändert (UTC)</dt>
-                    <dd class="mt-1.5 wrap-break-word text-sm font-medium">28.10.2026, 14:03:11</dd>
-                </div>
-            </dl>
-        </section>
-        <section class="min-w-0 rounded-2xl border border-[#e8e0d7] bg-white p-5 shadow-xs sm:p-6">
-            <div class="mb-5 flex flex-wrap items-center justify-between gap-3">
-                <h2 class="text-base font-semibold tracking-tight">Mengen nach Lieferstatus</h2>
-            </div>
-            <p class="text-xs text-slate-500">Gesamtbestand · alle Filialen</p>
-            <p class="mb-6 mt-2 text-4xl font-semibold tracking-tight">14,000</p>
-            <div class="space-y-4">
-                <div class="flex items-center justify-between border-b border-slate-100 pb-4">
-                    <span class="flex items-center gap-2 text-sm">
-                        <span class="size-2 rounded-full bg-emerald-500"></span>
-                        Sofort lieferbar
-                    </span>
-                    <strong class="tabular-nums">10,000</strong>
-                </div>
-                <div class="flex items-center justify-between border-b border-slate-100 pb-4">
-                    <span class="flex items-center gap-2 text-sm">
-                        <span class="size-2 rounded-full bg-amber-500"></span>
-                        Kurzfristig lieferbar
-                    </span>
-                    <strong class="tabular-nums">4,000</strong>
-                </div>
-                <div class="flex items-center justify-between border-b border-slate-100 pb-4">
-                    <span class="flex items-center gap-2 text-sm">
-                        <span class="size-2 rounded-full bg-slate-400"></span>
-                        Nicht lieferbar
-                    </span>
-                    <strong class="tabular-nums">0,000</strong>
-                </div>
-            </div>
-        </section>
+      <section class="min-w-0 rounded-2xl border border-[#e8e0d7] bg-white p-5 shadow-xs sm:p-6">
+        <div class="mb-5 flex flex-wrap items-center justify-between gap-3">
+          <h2 class="text-base font-semibold tracking-tight">@_sku.ArticleName · Größe @_sku.Size</h2>
+        </div>
+        <dl class="grid grid-cols-1 gap-x-8 gap-y-5 sm:grid-cols-2">
+          <div>
+            <dt class="text-xs font-medium text-slate-500">SKU</dt>
+            <dd class="mt-1.5 wrap-break-word text-sm font-medium">@_sku.Sku</dd>
+          </div>
+          <div>
+            <dt class="text-xs font-medium text-slate-500">Artikel</dt>
+            <dd class="mt-1.5 wrap-break-word text-sm font-medium">
+              <a class="text-[#a34c27] underline" href="/design-b/article-detail/@_sku.ArticleNumber">
+                @_sku.ArticleNumber · @_sku.ArticleName
+              </a>
+            </dd>
+          </div>
+          <div>
+            <dt class="text-xs font-medium text-slate-500">Farbe</dt>
+            <dd class="mt-1.5 wrap-break-word text-sm font-medium">
+
+              <span class="mr-2 inline-block size-3 rounded-full"
+                    style="@($"background-color: rgb({_sku.Color.Red}, {_sku.Color.Green}, {_sku.Color.Blue});")">
+              </span>
+              @_sku.Color.Name · ID @_sku.Color.Id · RGB @_sku.Color.Red / @_sku.Color.Green / @_sku.Color.Blue
+            </dd>
+          </div>
+          <div>
+            <dt class="text-xs font-medium text-slate-500">Lieferantenfarbe</dt>
+            <dd class="mt-1.5 wrap-break-word text-sm font-medium">@_sku.SupplierColor</dd>
+          </div>
+          <div>
+            <dt class="text-xs font-medium text-slate-500">Form</dt>
+            <dd class="mt-1.5 wrap-break-word text-sm font-medium">@_sku.Fit</dd>
+          </div>
+          <div>
+            <dt class="text-xs font-medium text-slate-500">Größe</dt>
+            <dd class="mt-1.5 wrap-break-word text-sm font-medium">@_sku.Size</dd>
+          </div>
+          <div>
+            <dt class="text-xs font-medium text-slate-500">Führende Farbe</dt>
+            <dd class="mt-1.5 wrap-break-word text-sm font-medium">
+              <span
+                class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset
+                @(_sku.IsLeadingColor ? "bg-emerald-50 text-emerald-800 ring-emerald-200" : "bg-slate-100 text-slate-700 ring-slate-200")">
+                @(_sku.IsLeadingColor ? "Ja" : "Nein")
+              </span>
+            </dd>
+          </div>
+          <div>
+            <dt class="text-xs font-medium text-slate-500">Gelöscht</dt>
+            <dd class="mt-1.5 wrap-break-word text-sm font-medium">
+              <span
+                class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset
+                @(_sku.IsDeleted ? "bg-rose-50 text-rose-800 ring-rose-200" : "bg-slate-100 text-slate-700 ring-slate-200")">
+                @(_sku.IsDeleted ? "Ja" : "Nein")
+              </span>
+            </dd>
+          </div>
+          <div>
+            <dt class="text-xs font-medium text-slate-500">VK-Preis</dt>
+            <dd class="mt-1.5 wrap-break-word text-sm font-medium">
+              <span class="@(_sku.SalesPriceReduced.HasValue ? "text-slate-500 line-through" : "")">
+                @_sku.SalesPrice €
+              </span>
+            </dd>
+          </div>
+          <div>
+            <dt class="text-xs font-medium text-slate-500">Reduzierter VK-Preis</dt>
+            <dd class="mt-1.5 wrap-break-word text-sm font-medium">
+              @(_sku.SalesPriceReduced.HasValue ? $"{_sku.SalesPriceReduced.Value} €" : "—")
+            </dd>
+          </div>
+          <div>
+            <dt class="text-xs font-medium text-slate-500">Geändert (UTC)</dt>
+            <dd class="mt-1.5 wrap-break-word text-sm font-medium">@_sku.ModifiedAt.ToString(format: "dd.MM.yyyy HH:mm:ss")</dd>
+          </div>
+        </dl>
+      </section>
+      <section class="min-w-0 rounded-2xl border border-[#e8e0d7] bg-white p-5 shadow-xs sm:p-6">
+        <div class="mb-5 flex flex-wrap items-center justify-between gap-3">
+          <h2 class="text-base font-semibold tracking-tight">Mengen nach Lieferstatus</h2>
+        </div>
+        <p class="text-xs text-slate-500">Gesamtbestand · alle Filialen</p>
+        <p class="mb-6 mt-2 text-4xl font-semibold tracking-tight">
+          @_sku.Stock
+        </p>
+        <div class="space-y-4">
+          <div class="flex items-center justify-between border-b border-slate-100 pb-4">
+            <span class="flex items-center gap-2 text-sm">
+              <span class="size-2 rounded-full bg-emerald-500"></span>
+              Sofort lieferbar
+            </span>
+            <strong class="tabular-nums">@_sku.Quantities.AvailableNow</strong>
+          </div>
+          <div class="flex items-center justify-between border-b border-slate-100 pb-4">
+            <span class="flex items-center gap-2 text-sm">
+              <span class="size-2 rounded-full bg-amber-500"></span>
+              Kurzfristig lieferbar
+            </span>
+            <strong class="tabular-nums">@_sku.Quantities.AvailableSoon</strong>
+          </div>
+          <div class="flex items-center justify-between border-b border-slate-100 pb-4">
+            <span class="flex items-center gap-2 text-sm">
+              <span class="size-2 rounded-full bg-slate-400"></span>
+              Nicht lieferbar
+            </span>
+            <strong class="tabular-nums">@_sku.Quantities.NotAvailable</strong>
+          </div>
+        </div>
+      </section>
     </div>
     <div class="mt-6">
-        <section class="min-w-0 rounded-2xl border border-[#e8e0d7] bg-white p-5 shadow-xs sm:p-6">
-            <div class="mb-5 flex flex-wrap items-center justify-between gap-3">
-                <h2 class="text-base font-semibold tracking-tight">Filialbestände</h2>
-                <a class="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#a34c27] border border-slate-300 bg-white text-slate-700 hover:bg-slate-50" href="/design-b/branch-stock?sku=100234-0815-042">Alle Filialbestände</a>
-            </div>
-            <div class="max-w-full overflow-x-auto rounded-xl border border-[#e8e0d7]">
-                <table class="w-full text-left text-sm">
-                    <caption class="sr-only">Bestände dieser SKU je Filiale</caption>
-                    <thead class="bg-[#f8f4ee] text-[11px] font-semibold uppercase tracking-wider text-slate-500">
-                        <tr>
-                            <th scope="col" class="whitespace-nowrap px-4 py-3">Filiale</th>
-                            <th scope="col" class="whitespace-nowrap px-4 py-3">Name</th>
-                            <th scope="col" class="whitespace-nowrap px-4 py-3">Bestand</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-slate-100">
-                        <tr class="hover:bg-[#f8f4ee]">
-                            <td class="px-4 py-4 align-top font-medium whitespace-nowrap">1</td>
-                            <td class="px-4 py-4 align-top tabular-nums">Leer Innenstadt</td>
-                            <td class="px-4 py-4 align-top tabular-nums">6,000</td>
-                        </tr>
-                        <tr class="hover:bg-[#f8f4ee]">
-                            <td class="px-4 py-4 align-top font-medium whitespace-nowrap">3</td>
-                            <td class="px-4 py-4 align-top tabular-nums">Oldenburg</td>
-                            <td class="px-4 py-4 align-top tabular-nums">8,000</td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-            <p class="mt-4 text-sm text-slate-500">6,000 + 8,000 = 14,000 Gesamtbestand</p>
-        </section>
+      <section class="min-w-0 rounded-2xl border border-[#e8e0d7] bg-white p-5 shadow-xs sm:p-6">
+        <div class="mb-5 flex flex-wrap items-center justify-between gap-3">
+          <h2 class="text-base font-semibold tracking-tight">Filialbestände</h2>
+          <a class="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#a34c27] border border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
+             href="@($"/design-b/branch-stock?sku={Uri.EscapeDataString(_sku.Sku)}")">
+            Alle Filialbestände
+          </a>
+        </div>
+        <div class="max-w-full overflow-x-auto rounded-xl border border-[#e8e0d7]">
+          <table class="w-full text-left text-sm">
+            <caption class="sr-only">Bestände dieser SKU je Filiale</caption>
+            <thead class="bg-[#f8f4ee] text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+              <tr>
+                <th scope="col" class="whitespace-nowrap px-4 py-3">Filiale</th>
+                <th scope="col" class="whitespace-nowrap px-4 py-3">Name</th>
+                <th scope="col" class="whitespace-nowrap px-4 py-3">Bestand</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100">
+
+              @foreach (BranchStockDto branchStock in _sku.BranchStock)
+              {
+                <tr class="hover:bg-[#f8f4ee]">
+                  <td class="px-4 py-4 align-top font-medium whitespace-nowrap">@branchStock.Branch</td>
+                  <td class="px-4 py-4 align-top tabular-nums">@branchStock.BranchName</td>
+                  <td class="px-4 py-4 align-top tabular-nums">@branchStock.Stock</td>
+                </tr>
+              }
+
+            </tbody>
+          </table>
+        </div>
+        <p class="mt-4 text-sm text-slate-500">
+          @(string.Join(" + ", _sku.BranchStock.Select(x => x.Stock)))
+          =
+          @(_sku.BranchStock.Sum(x => x.Stock))
+          Gesamtbestand
+        </p>
+      </section>
     </div>
-</main>
+  </main>
+}

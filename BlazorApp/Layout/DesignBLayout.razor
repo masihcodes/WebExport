@@ -4,7 +4,7 @@
 @inject NavigationManager Navi
 @implements IDisposable
 
-@code{
+@code {
     private void ChangeAsync() => _ = InvokeAsync(StateHasChanged);
     protected override void OnInitialized() => Session.Changed += ChangeAsync;
     public void Dispose() => Session.Changed -= ChangeAsync;
@@ -26,47 +26,50 @@
             </span>
         </span>
         <div class="text-right">
-            <p class="mt-1 text-sm">
-                Modehaus Muster GmbH
-                <button @onclick="HandleLogout" class="ml-4 text-xs text-white/50 underline">Abmelden</button>
-            </p>
+            <div class="flex items-center justify-end gap-4">
+                @if (Session.Tenant is { } tenant)
+                {
+                    <div>
+                        <p class="text-sm font-semibold">@tenant.Name</p>
+                        <p class="text-xs text-white/50">Nr. @tenant.Number · @tenant.BranchCount Filialen</p>
+                    </div>
+                }
+                <button type="button" @onclick="HandleLogout"
+                        class="cursor-pointer text-xs text-white/50 underline underline-offset-4">
+                    Abmelden
+                </button>
+            </div>
         </div>
     </div>
     <nav class="mx-auto flex max-w-360 gap-1 overflow-x-auto px-5 pb-4 sm:px-9">
-        <NavLink
-            href="/design-b/status"
-            class="flex items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium text-white/65 hover:bg-white/5 hover:text-white"
-            ActiveClass="bg-[#a34c27] text-white">
+        <NavLink href="/design-b/status"
+                 class="flex items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium text-white/65 hover:bg-white/5 hover:text-white"
+                 ActiveClass="bg-[#a34c27] text-white">
             <Icon Name="LucideIcon.Activity"></Icon> Status
         </NavLink>
-        <NavLink
-            href="/design-b/articles"
-            class="flex items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium text-white/65 hover:bg-white/5 hover:text-white"
-            ActiveClass="bg-[#a34c27] text-white">
+        <NavLink href="/design-b/articles"
+                 class="flex items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium text-white/65 hover:bg-white/5 hover:text-white"
+                 ActiveClass="bg-[#a34c27] text-white">
             <Icon Name="LucideIcon.Package"></Icon> Artikel
         </NavLink>
-        <NavLink
-            href="/design-b/prices-stock"
-            class="flex items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium text-white/65 hover:bg-white/5 hover:text-white"
-            ActiveClass="bg-[#a34c27] text-white">
+        <NavLink href="/design-b/prices-stock"
+                 class="flex items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium text-white/65 hover:bg-white/5 hover:text-white"
+                 ActiveClass="bg-[#a34c27] text-white">
             <Icon Name="LucideIcon.Layers"></Icon> Preise &amp; Bestände
         </NavLink>
-        <NavLink
-            href="/design-b/branch-stock"
-            class="flex items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium text-white/65 hover:bg-white/5 hover:text-white"
-            ActiveClass="bg-[#a34c27] text-white">
+        <NavLink href="/design-b/branch-stock"
+                 class="flex items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium text-white/65 hover:bg-white/5 hover:text-white"
+                 ActiveClass="bg-[#a34c27] text-white">
             <Icon Name="LucideIcon.Store"></Icon> Filialbestände
         </NavLink>
-        <NavLink
-            href="/design-b/categories"
-            class="flex items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium text-white/65 hover:bg-white/5 hover:text-white"
-            ActiveClass="bg-[#a34c27] text-white">
+        <NavLink href="/design-b/categories"
+                 class="flex items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium text-white/65 hover:bg-white/5 hover:text-white"
+                 ActiveClass="bg-[#a34c27] text-white">
             <Icon Name="LucideIcon.Layers"></Icon> Kategorien
         </NavLink>
-        <NavLink
-            href="/design-b/master-data"
-            class="flex items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium text-white/65 hover:bg-white/5 hover:text-white"
-            ActiveClass="bg-[#a34c27] text-white">
+        <NavLink href="/design-b/master-data"
+                 class="flex items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium text-white/65 hover:bg-white/5 hover:text-white"
+                 ActiveClass="bg-[#a34c27] text-white">
             <Icon Name="LucideIcon.Grip"></Icon> Stammdaten
         </NavLink>
     </nav>

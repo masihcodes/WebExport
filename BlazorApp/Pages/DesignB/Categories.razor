@@ -1,165 +1,268 @@
 @page "/design-b/categories"
 @layout DesignBLayout
 
-<main class="mx-auto p-5 sm:p-9 min-w-0">
-    <div class="mb-7 flex flex-wrap items-end justify-between gap-4">
-        <div>
-            <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#a34c27]">WebExport Studio · Kategorien</p>
-            <h1 class="mt-2 text-4xl sm:text-5xl font-semibold leading-tight tracking-tight">Struktur für Ihr Sortiment</h1>
-            <p class="mt-3 text-sm text-slate-500">Modehaus Muster GmbH</p>
-        </div>
-    </div>
+@inject HttpClient Http
+@inject NavigationManager Navi
+@inject Services.Session Session
 
-    <div class="grid gap-6 xl:grid-cols-[1.4fr_1fr]">
-        <section class="min-w-0 rounded-2xl border border-[#e8e0d7] bg-white p-5 shadow-xs sm:p-6">
-            <div class="mb-5 flex flex-wrap items-center justify-between gap-3">
-                <h2 class="text-base font-semibold tracking-tight">Kategoriebaum</h2>
-            </div>
-            <label class="mb-6 flex items-center gap-2 text-sm">
-                <input class="size-4 accent-[#a34c27]" type="checkbox" @bind="_activeOnly" />
-                Nur aktive Kategorien
-            </label>
-            <details open="" class="group">
-                <summary class="mb-4 cursor-pointer rounded-xl bg-[#f8f4ee] p-4 text-sm font-semibold">
-                    Herren
-                    <span class="ml-2 font-normal text-slate-500">#1 · Rang 1 · Aktiv</span>
-                </summary>
-                <button type="button" class="mb-3 text-xs font-semibold text-[#a34c27] underline underline-offset-4" @onclick="() => SelectCategory(1)" aria-label="Details zu Herren">Details</button>
-                <div class="ml-5 border-l border-slate-200 pl-4">
-                    <div class="mb-2 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#e8e0d7] bg-white p-4">
-                        <div>
-                            <a class="text-sm font-semibold text-[#a34c27] underline-offset-4 hover:underline" href="/design-b/articles?category=7">Anzüge</a>
-                            <span class="ml-2 text-xs text-slate-400">#7</span>
-                            <p class="mt-1 text-xs text-slate-500">Rang 1 · Aktiv</p>
-                        </div>
-                        <div class="flex items-center gap-3">
-                            <button type="button" class="text-xs font-semibold text-slate-500 underline" @onclick="() => SelectCategory(7)" aria-label="Details zu Anzüge">Details</button>
-                            <Icon Name="LucideIcon.ArrowRight" Class="size-4" aria-hidden="true" />
-                        </div>
-                    </div>
-                    <details open="">
-                        <summary class="mb-2 cursor-pointer rounded-xl bg-[#f8f4ee] p-4 text-sm font-semibold">
-                            Hemden · #8
-                            <a class="ml-3 text-xs text-[#a34c27] underline" href="/design-b/articles?category=8">Artikel ansehen</a>
-                        </summary>
-                        <button type="button" class="mb-3 text-xs font-semibold text-[#a34c27] underline underline-offset-4" @onclick="() => SelectCategory(8)" aria-label="Details zu Hemden">Details</button>
-                        <div class="ml-4 border-l border-slate-200 pl-4">
-                            <div class="mb-2 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#e8e0d7] bg-white p-4">
-                                <div>
-                                    <a class="text-sm font-semibold text-[#a34c27] underline-offset-4 hover:underline" href="/design-b/articles?category=112">Business</a>
-                                    <span class="ml-2 text-xs text-slate-400">#112</span>
-                                    <p class="mt-1 text-xs text-slate-500">Rang 1 · Aktiv</p>
-                                </div>
-                                <div class="flex items-center gap-3">
-                                    <button type="button" class="text-xs font-semibold text-slate-500 underline" @onclick="() => SelectCategory(112)" aria-label="Details zu Business">Details</button>
-                                    <Icon Name="LucideIcon.ArrowRight" Class="size-4" aria-hidden="true" />
-                                </div>
-                            </div>
-                            <div class="mb-2 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#e8e0d7] bg-white p-4">
-                                <div>
-                                    <a class="text-sm font-semibold text-[#a34c27] underline-offset-4 hover:underline" href="/design-b/articles?category=113">Freizeit</a>
-                                    <span class="ml-2 text-xs text-slate-400">#113</span>
-                                    <p class="mt-1 text-xs text-slate-500">Rang 2 · Aktiv</p>
-                                </div>
-                                <div class="flex items-center gap-3">
-                                    <button type="button" class="text-xs font-semibold text-slate-500 underline" @onclick="() => SelectCategory(113)" aria-label="Details zu Freizeit">Details</button>
-                                    <Icon Name="LucideIcon.ArrowRight" Class="size-4" aria-hidden="true" />
-                                </div>
-                            </div>
-                        </div>
-                    </details>
-                    <div class="mb-2 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#e8e0d7] bg-white p-4">
-                        <div>
-                            <a class="text-sm font-semibold text-[#a34c27] underline-offset-4 hover:underline" href="/design-b/articles?category=12">Accessoires</a>
-                            <span class="ml-2 text-xs text-slate-400">#12</span>
-                            <p class="mt-1 text-xs text-slate-500">Rang 3 · Aktiv</p>
-                        </div>
-                        <div class="flex items-center gap-3">
-                            <button type="button" class="text-xs font-semibold text-slate-500 underline" @onclick="() => SelectCategory(12)" aria-label="Details zu Accessoires">Details</button>
-                            <Icon Name="LucideIcon.ArrowRight" Class="size-4" aria-hidden="true" />
-                        </div>
-                    </div>
-                    @if (!_activeOnly)
-                    {
-                        <div class="mb-2 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#e8e0d7] bg-white p-4">
-                            <div>
-                                <a class="text-sm font-semibold text-[#a34c27] underline-offset-4 hover:underline" href="/design-b/articles?category=19">Archiv</a>
-                                <span class="ml-2 text-xs text-slate-400">#19</span>
-                                <p class="mt-1 text-xs text-slate-500">Rang 4 · Inaktiv</p>
-                            </div>
-                            <div class="flex items-center gap-3">
-                                <button type="button" class="text-xs font-semibold text-slate-500 underline" @onclick="() => SelectCategory(19)" aria-label="Details zu Archiv">Details</button>
-                                <Icon Name="LucideIcon.ArrowRight" Class="size-4" aria-hidden="true" />
-                            </div>
-                        </div>
-                    }
-                </div>
-            </details>
-        </section>
-        <section class="min-w-0 rounded-2xl border border-[#e8e0d7] bg-white p-5 shadow-xs sm:p-6">
-            <div class="mb-5 flex flex-wrap items-center justify-between gap-3">
-                <h2 class="text-base font-semibold tracking-tight">Kategoriedetail</h2>
-            </div>
-            <div>
-                <dl class="grid grid-cols-1 gap-x-8 gap-y-5 sm:grid-cols-2">
-                    <div>
-                        <dt class="text-xs font-medium text-slate-500">Nummer</dt>
-                        <dd class="mt-1.5 wrap-break-word text-sm font-medium">@_selectedCategory.Number</dd>
-                    </div>
-                    <div>
-                        <dt class="text-xs font-medium text-slate-500">Name</dt>
-                        <dd class="mt-1.5 wrap-break-word text-sm font-medium">@_selectedCategory.Name</dd>
-                    </div>
-                    <div>
-                        <dt class="text-xs font-medium text-slate-500">Übergeordnete Kategorie</dt>
-                        <dd class="mt-1.5 wrap-break-word text-sm font-medium">@(_selectedCategory.ParentNumber?.ToString() ?? "—")</dd>
-                    </div>
-                    <div>
-                        <dt class="text-xs font-medium text-slate-500">Rang</dt>
-                        <dd class="mt-1.5 wrap-break-word text-sm font-medium">@_selectedCategory.Rank</dd>
-                    </div>
-                    <div>
-                        <dt class="text-xs font-medium text-slate-500">Suchbegriffe</dt>
-                        <dd class="mt-1.5 wrap-break-word text-sm font-medium">@(_selectedCategory.SearchTerms ?? "—")</dd>
-                    </div>
-                    <div>
-                        <dt class="text-xs font-medium text-slate-500">Aktiv</dt>
-                        <dd class="mt-1.5 wrap-break-word text-sm font-medium">
-                            <span class="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset @(_selectedCategory.IsActive ? "bg-emerald-50 text-emerald-800 ring-emerald-200" : "bg-rose-50 text-rose-800 ring-rose-200")">@(_selectedCategory.IsActive ? "Ja" : "Nein")</span>
-                        </dd>
-                    </div>
-                </dl>
-            </div>
-        </section>
-    </div>
-</main>
+@inject ToastService Toast
 
-@code {
-    private bool _activeOnly;
+@code
+{
 
-    private static readonly CategoryItem[] CategoryItems =
-    [
-        new(1, "Herren", null, 1, null, true),
-        new(7, "Anzüge", 1, 1, "Anzug Sakko", true),
-        new(8, "Hemden", 1, 2, "Hemd", true),
-        new(112, "Business", 8, 1, "Businesshemd", true),
-        new(113, "Freizeit", 8, 2, "Freizeithemd", true),
-        new(12, "Accessoires", 1, 3, "Gürtel Tuch", true),
-        new(19, "Archiv", 1, 4, "Archiv", false)
-    ];
+  private static readonly JsonSerializerOptions ApiJsonOptions = new JsonSerializerOptions(JsonSerializerDefaults.Web)
+  {
+    Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase) }
+  };
 
-    private CategoryItem _selectedCategory = CategoryItems[2];
+  private CategoryResponseDto[]? _categories;
+  private CategoryResponseDto? _selectedCategory;
+  private List<(int? ParentNumber, CategoryResponseDto[] Items)>? _categoryGroups;
+  private bool _activeOnly;
 
-    private void SelectCategory(int number)
+  private bool _isLoading;
+  private string? _error;
+
+  protected override async Task OnInitializedAsync()
+  {
+    if (!Session.IsAuthenticated || string.IsNullOrWhiteSpace(Session.ApiKey))
     {
-        _selectedCategory = CategoryItems.Single(category => category.Number == number);
+      Session.Clear();
+      Navi.NavigateTo(uri: "/design-b/login");
+      return;
     }
 
-    private sealed record CategoryItem(
-        int Number,
-        string Name,
-        int? ParentNumber,
-        short Rank,
-        string? SearchTerms,
-        bool IsActive);
+    await LoadCategories();
+  }
+
+  private async Task LoadCategories()
+  {
+    if (_isLoading) return;
+
+    _isLoading = true;
+    _error = null;
+
+    try
+    {
+      using var req = new HttpRequestMessage(HttpMethod.Get, requestUri: "/api/v1/categories");
+
+      req.Headers.Add(name: "Authorization", value: $"Bearer {Session?.Current?.AccessToken}");
+      req.Headers.Add(name: "X-Api-Key", value: Session?.ApiKey);
+
+      using HttpResponseMessage res = await Http.SendAsync(req);
+
+      if (res.StatusCode == HttpStatusCode.Unauthorized)
+      {
+        Session?.Clear();
+        Navi.NavigateTo(uri: "/design-b/login");
+        return;
+      }
+
+      if (!res.IsSuccessStatusCode)
+      {
+        var apiErr = await res.Content.ReadFromJsonAsync<ErrorResponseDto>();
+        _error = apiErr?.Message ?? "Die Anfrage ist fehlgeschlagen.";
+        Toast.Error(_error);
+        return;
+      }
+
+      _categories = await res.Content.ReadFromJsonAsync<CategoryResponseDto[]>(ApiJsonOptions);
+      _categoryGroups = _categories?.GroupBy(x => x.ParentNumber).Select(g => (
+        ParentNumber: g.Key,
+        Items: g.OrderBy(x => x.Rank).ToArray()
+      )).ToList();
+    }
+    catch (Exception)
+    {
+      _error = "Die API konnte nicht erreicht werden.";
+      Toast.Error(_error);
+    }
+    finally
+    {
+      _isLoading = false;
+    }
+  }
+
+
+  private void SelectCategory(int number)
+  {
+    _selectedCategory = _categories?.FirstOrDefault(c => c.Number == number);
+  }
+
 }
+
+<PageTitle>Kategorien</PageTitle>
+<Toaster RichColors="@true" CloseButton="@true" />
+
+
+<main class="mx-auto p-5 sm:p-9 min-w-0">
+  <div class="mb-7 flex flex-wrap items-end justify-between gap-4">
+    <div>
+      <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#a34c27]">Datenportal · Kategorien</p>
+      <h1 class="mt-2 text-3xl font-semibold leading-tight tracking-tight">Struktur für Ihr Sortiment</h1>
+      <p class="mt-3 text-sm text-slate-500">@Session.Tenant?.Name</p>
+    </div>
+  </div>
+
+  <div class="grid gap-6 xl:grid-cols-[1.4fr_1fr]">
+    <section class="min-w-0 rounded-2xl border border-[#e8e0d7] bg-white p-5 shadow-xs sm:p-6">
+      <div class="mb-5 flex flex-wrap items-center justify-between gap-3">
+        <h2 class="text-base font-semibold tracking-tight">Kategoriebaum</h2>
+      </div>
+      <label class="mb-6 flex items-center gap-2 text-sm">
+        <InputCheckbox class="size-4 accent-[#a34c27]" @bind-Value="_activeOnly" />
+        Nur aktive Kategorien anzeigen
+      </label>
+
+      @if (_isLoading)
+      {
+        <p role="status" class="rounded-xl bg-slate-50 p-4 text-sm text-slate-600">Kategorien werden geladen …</p>
+      }
+      else if (!string.IsNullOrWhiteSpace(_error))
+      {
+        <p role="alert" class="rounded-xl bg-rose-50 p-4 text-sm text-rose-800">@_error</p>
+      }
+      else
+      {
+        var groups = _categoryGroups ?? [];
+        var roots = groups.FirstOrDefault(g => g.ParentNumber is null).Items ?? [];
+        var visibleRoots = roots.Where(c => !_activeOnly || c.IsActive).ToArray();
+
+        if (visibleRoots.Length == 0)
+        {
+          <p role="status" class="rounded-xl bg-slate-50 p-4 text-sm text-slate-600">
+            @(_activeOnly ? "Keine aktiven Kategorien gefunden." : "Keine Kategorien gefunden.")
+          </p>
+        }
+        else
+        {
+          <div class="space-y-3">
+            @foreach (var root in visibleRoots)
+            {
+              var children = groups.FirstOrDefault(g => g.ParentNumber == root.Number).Items ?? [];
+
+              <details class="rounded-xl border border-[#e8e0d7]">
+                <summary
+                  class="cursor-pointer rounded-xl bg-[#f8f4ee] px-4 py-3 text-sm font-semibold text-slate-900 focus-visible:outline-2 focus-visible:outline-[#a34c27]">
+                  @root.Name
+                  <span class="ml-2 font-normal text-slate-500">#@root.Number · Rang @root.Rank</span>
+                </summary>
+
+                <div class="space-y-3 p-3 sm:p-4">
+                  <div class="flex flex-wrap items-center gap-x-4 gap-y-2">
+                    <a class="text-xs font-semibold text-[#a34c27] underline underline-offset-4"
+                       href="@($"/design-b/articles?category={root.Number}")">
+                      Artikel ansehen
+                    </a>
+                    <button type="button" class="text-xs font-semibold text-slate-600 underline underline-offset-4"
+                            @onclick="() => SelectCategory(root.Number)">
+                      Details
+                    </button>
+                  </div>
+
+                  @foreach (var child in children.Where(c => !_activeOnly || c.IsActive))
+                  {
+                    var grandchildren = groups.FirstOrDefault(g => g.ParentNumber == child.Number).Items ?? [];
+
+                    <details class="ml-2 border-l-2 border-[#e8e0d7] pl-3">
+                      <summary
+                        class="cursor-pointer rounded-lg bg-[#f8f4ee] px-3 py-2 text-sm font-semibold text-slate-900 focus-visible:outline-2 focus-visible:outline-[#a34c27]">
+                        @child.Name
+                        <span class="ml-2 font-normal text-slate-500">#@child.Number · Rang @child.Rank</span>
+                      </summary>
+
+                      <div class="space-y-3 py-3">
+                        <div class="flex flex-wrap items-center gap-x-4 gap-y-2">
+                          <a class="text-xs font-semibold text-[#a34c27] underline underline-offset-4"
+                             href="@($"/design-b/articles?category={child.Number}")">
+                            Artikel ansehen
+                          </a>
+                          <button type="button" class="text-xs font-semibold text-slate-600 underline underline-offset-4"
+                                  @onclick="() => SelectCategory(child.Number)">
+                            Details
+                          </button>
+                        </div>
+
+                        <ul class="space-y-2">
+                          @foreach (var grandchild in grandchildren.Where(c => !_activeOnly || c.IsActive))
+                          {
+                            <li
+                              class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 rounded-lg border border-[#e8e0d7] px-3 py-2">
+                              <a class="text-sm font-semibold text-[#a34c27] underline-offset-4 hover:underline"
+                                 href="@($"/design-b/articles?category={grandchild.Number}")">
+                                @grandchild.Name
+                                <span class="ml-2 text-xs font-normal text-slate-500">
+                                  #@grandchild.Number · Rang
+                                  @grandchild.Rank
+                                </span>
+                              </a>
+                              <button type="button" class="text-xs font-semibold text-slate-600 underline underline-offset-4"
+                                      @onclick="() => SelectCategory(grandchild.Number)">
+                                Details
+                              </button>
+                            </li>
+                          }
+                        </ul>
+                      </div>
+                    </details>
+                  }
+                </div>
+              </details>
+            }
+          </div>
+        }
+      }
+    </section>
+
+
+    <section class="min-w-0 rounded-2xl border border-[#e8e0d7] bg-white p-5 shadow-xs sm:p-6">
+      <div class="mb-5 flex flex-wrap items-center justify-between gap-3">
+        <h2 class="text-base font-semibold tracking-tight">Kategoriedetail</h2>
+      </div>
+      <div>
+        @if (_selectedCategory is not null)
+        {
+          <dl class="grid grid-cols-1 gap-x-8 gap-y-5 sm:grid-cols-2">
+            <div>
+              <dt class="text-xs font-medium text-slate-500">Nummer</dt>
+              <dd class="mt-1.5 wrap-break-word text-sm font-medium">@_selectedCategory.Number</dd>
+            </div>
+            <div>
+              <dt class="text-xs font-medium text-slate-500">Name</dt>
+              <dd class="mt-1.5 wrap-break-word text-sm font-medium">@_selectedCategory.Name</dd>
+            </div>
+            <div>
+              <dt class="text-xs font-medium text-slate-500">Übergeordnete Kategorie</dt>
+              <dd class="mt-1.5 wrap-break-word text-sm font-medium">
+                @(_selectedCategory.ParentNumber?.ToString() ?? "—")
+              </dd>
+            </div>
+            <div>
+              <dt class="text-xs font-medium text-slate-500">Rang</dt>
+              <dd class="mt-1.5 wrap-break-word text-sm font-medium">@_selectedCategory.Rank</dd>
+            </div>
+            <div>
+              <dt class="text-xs font-medium text-slate-500">Suchbegriffe</dt>
+              <dd class="mt-1.5 wrap-break-word text-sm font-medium">@(_selectedCategory.SearchTerms ?? "—")</dd>
+            </div>
+            <div>
+              <dt class="text-xs font-medium text-slate-500">Aktiv</dt>
+              <dd class="mt-1.5 wrap-break-word text-sm font-medium">
+                <span
+                  class="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset @(_selectedCategory.IsActive ? "bg-emerald-50 text-emerald-800 ring-emerald-200" : "bg-rose-50 text-rose-800 ring-rose-200")">
+                  @(_selectedCategory.IsActive
+                    ? "Ja"
+                    : "Nein")
+                </span>
+              </dd>
+            </div>
+          </dl>
+        }
+        else
+        {
+          <p class="text-sm text-slate-500">Bitte wählen Sie eine Kategorie aus.</p>
+        }
+      </div>
+    </section>
+  </div>
+</main>

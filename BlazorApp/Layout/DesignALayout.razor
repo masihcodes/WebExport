@@ -3,7 +3,7 @@
 @inject NavigationManager Navi
 @implements IDisposable
 
-@code{
+@code {
     private void ChangeAsync() => _ = InvokeAsync(StateHasChanged);
     protected override void OnInitialized() => Session.Changed += ChangeAsync;
     public void Dispose() => Session.Changed -= ChangeAsync;
@@ -64,8 +64,11 @@
     </nav>
     <div class="hidden border-t border-white/10 p-5 lg:absolute lg:inset-x-0 lg:bottom-0 lg:block">
         <p class="mt-2 text-sm font-semibold">@(Session?.Tenant?.Name)</p>
-        <p class="mt-1 text-xs text-white/40">Nr. @(Session?.Tenant?.Number) · @(Session?.Tenant?.BranchCount) Filialen</p>
-        <button @onclick="HandleLogout" class="mt-5 inline-block text-xs text-white/65 underline underline-offset-4 cursor-pointer">Abmelden</button>
+        <p class="mt-1 text-xs text-white/40">Nr. @(Session?.Tenant?.Number) · @(Session?.Tenant?.BranchCount) Filialen
+        </p>
+        <button @onclick="HandleLogout"
+                class="mt-5 inline-block text-xs text-white/65 underline underline-offset-4 cursor-pointer">Abmelden
+        </button>
     </div>
 </aside>
 
