@@ -1,204 +1,533 @@
 @page "/design-a/master-data"
 @layout DesignALayout
 
-<main class="mx-auto p-5 sm:p-8 min-w-0 lg:ml-60">
-    <div class="mb-7 flex flex-wrap items-end justify-between gap-4">
-        <div>
-            <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#0f766e]">Datenportal · Stammdaten</p>
-            <h1 class="mt-2 text-3xl font-semibold leading-tight tracking-tight">Die Basis Ihrer Artikeldaten</h1>
-            <p class="mt-3 text-sm text-slate-500">Modehaus Muster GmbH</p>
-        </div>
-    </div>
+@inject HttpClient Http
+@inject NavigationManager Navi
+@inject Services.Session Session
 
-    <section class="min-w-0 rounded-2xl border border-[#e2e8ed] bg-white p-5 shadow-xs sm:p-6">
-        <div class="mb-5 flex flex-wrap items-center justify-between gap-3">
-            <h2 class="text-base font-semibold tracking-tight">Stammdaten durchsuchen</h2>
-        </div>
-        <div role="group" aria-label="Stammdatenbereiche" class="mb-6 flex flex-wrap gap-2">
-            <button type="button" id="tab-colors" aria-controls="panel-colors" class="rounded-lg border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-600 aria-pressed:border-[#0f766e] aria-pressed:bg-[#0f766e] aria-pressed:text-white focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#0f766e]" @onclick="() => _activeTab = MasterDataTab.Colors" aria-pressed="@(_activeTab == MasterDataTab.Colors ? "true" : "false")">Farben</button>
-            <button type="button" id="tab-sizes" aria-controls="panel-sizes" class="rounded-lg border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-600 aria-pressed:border-[#0f766e] aria-pressed:bg-[#0f766e] aria-pressed:text-white focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#0f766e]" @onclick="() => _activeTab = MasterDataTab.Sizes" aria-pressed="@(_activeTab == MasterDataTab.Sizes ? "true" : "false")">Größen</button>
-            <button type="button" id="tab-branches" aria-controls="panel-branches" class="rounded-lg border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-600 aria-pressed:border-[#0f766e] aria-pressed:bg-[#0f766e] aria-pressed:text-white focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#0f766e]" @onclick="() => _activeTab = MasterDataTab.Branches" aria-pressed="@(_activeTab == MasterDataTab.Branches ? "true" : "false")">Filialen</button>
-            <button type="button" id="tab-attributes" aria-controls="panel-attributes" class="rounded-lg border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-600 aria-pressed:border-[#0f766e] aria-pressed:bg-[#0f766e] aria-pressed:text-white focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#0f766e]" @onclick="() => _activeTab = MasterDataTab.Attributes" aria-pressed="@(_activeTab == MasterDataTab.Attributes ? "true" : "false")">Merkmalsarten</button>
-            <button type="button" id="tab-delivery" aria-controls="panel-delivery" class="rounded-lg border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-600 aria-pressed:border-[#0f766e] aria-pressed:bg-[#0f766e] aria-pressed:text-white focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#0f766e]" @onclick="() => _activeTab = MasterDataTab.Delivery" aria-pressed="@(_activeTab == MasterDataTab.Delivery ? "true" : "false")">Lieferstatus</button>
-        </div>
-        <section tabindex="0" id="panel-colors" aria-labelledby="tab-colors" hidden="@(_activeTab != MasterDataTab.Colors)">
-            <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                <div class="rounded-xl border border-[#e2e8ed] p-4">
-                    <div class="mb-4 h-24 rounded-lg border border-slate-200 bg-[#002060]"></div>
-                    <h3 class="text-sm font-semibold">Dunkelblau</h3>
-                    <p class="mt-2 text-xs text-slate-500">ID 12 · RGB 0 / 32 / 96</p>
-                </div>
-                <div class="rounded-xl border border-[#e2e8ed] p-4">
-                    <div class="mb-4 h-24 rounded-lg border border-slate-200 bg-white"></div>
-                    <h3 class="text-sm font-semibold">Weiß</h3>
-                    <p class="mt-2 text-xs text-slate-500">ID 13 · RGB 255 / 255 / 255</p>
-                </div>
-                <div class="rounded-xl border border-[#e2e8ed] p-4">
-                    <div class="mb-4 h-24 rounded-lg border border-slate-200 bg-[#681c33]"></div>
-                    <h3 class="text-sm font-semibold">Bordeaux</h3>
-                    <p class="mt-2 text-xs text-slate-500">ID 14 · RGB 104 / 28 / 51</p>
-                </div>
-                <div class="rounded-xl border border-[#e2e8ed] p-4">
-                    <div class="mb-4 h-24 rounded-lg border border-slate-200 bg-[#d1c1a8]"></div>
-                    <h3 class="text-sm font-semibold">Sand</h3>
-                    <p class="mt-2 text-xs text-slate-500">ID 15 · RGB 209 / 193 / 168</p>
-                </div>
-            </div>
-        </section>
-        <section tabindex="0" id="panel-sizes" aria-labelledby="tab-sizes" hidden="@(_activeTab != MasterDataTab.Sizes)">
-            <div class="max-w-full overflow-x-auto rounded-xl border border-[#e2e8ed]">
-                <table class="w-full text-left text-sm">
-                    <caption class="sr-only">Größenstammdaten</caption>
-                    <thead class="bg-[#f2f6f7] text-[11px] font-semibold uppercase tracking-wider text-slate-500">
-                        <tr>
-                            <th scope="col" class="whitespace-nowrap px-4 py-3">ID</th>
-                            <th scope="col" class="whitespace-nowrap px-4 py-3">Größe</th>
-                            <th scope="col" class="whitespace-nowrap px-4 py-3">Größenlauf</th>
-                            <th scope="col" class="whitespace-nowrap px-4 py-3">Sortierung</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-slate-100">
-                        <tr class="hover:bg-[#f2f6f7]">
-                            <td class="px-4 py-4 align-top font-medium whitespace-nowrap">7</td>
-                            <td class="px-4 py-4 align-top tabular-nums">42</td>
-                            <td class="px-4 py-4 align-top tabular-nums">Hemden</td>
-                            <td class="px-4 py-4 align-top tabular-nums">4</td>
-                        </tr>
-                        <tr class="hover:bg-[#f2f6f7]">
-                            <td class="px-4 py-4 align-top font-medium whitespace-nowrap">8</td>
-                            <td class="px-4 py-4 align-top tabular-nums">44</td>
-                            <td class="px-4 py-4 align-top tabular-nums">Hemden</td>
-                            <td class="px-4 py-4 align-top tabular-nums">5</td>
-                        </tr>
-                        <tr class="hover:bg-[#f2f6f7]">
-                            <td class="px-4 py-4 align-top font-medium whitespace-nowrap">20</td>
-                            <td class="px-4 py-4 align-top tabular-nums">M</td>
-                            <td class="px-4 py-4 align-top tabular-nums">Buchstaben</td>
-                            <td class="px-4 py-4 align-top tabular-nums">2</td>
-                        </tr>
-                        <tr class="hover:bg-[#f2f6f7]">
-                            <td class="px-4 py-4 align-top font-medium whitespace-nowrap">21</td>
-                            <td class="px-4 py-4 align-top tabular-nums">L</td>
-                            <td class="px-4 py-4 align-top tabular-nums">Buchstaben</td>
-                            <td class="px-4 py-4 align-top tabular-nums">3</td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-        </section>
-        <section tabindex="0" id="panel-branches" aria-labelledby="tab-branches" hidden="@(_activeTab != MasterDataTab.Branches)">
-            <div class="max-w-full overflow-x-auto rounded-xl border border-[#e2e8ed]">
-                <table class="w-full text-left text-sm">
-                    <caption class="sr-only">Filialen des angemeldeten Mandanten</caption>
-                    <thead class="bg-[#f2f6f7] text-[11px] font-semibold uppercase tracking-wider text-slate-500">
-                        <tr>
-                            <th scope="col" class="whitespace-nowrap px-4 py-3">Nummer</th>
-                            <th scope="col" class="whitespace-nowrap px-4 py-3">Name</th>
-                            <th scope="col" class="whitespace-nowrap px-4 py-3">Ort</th>
-                            <th scope="col" class="whitespace-nowrap px-4 py-3">Aktiv</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-slate-100">
-                        <tr class="hover:bg-[#f2f6f7]">
-                            <td class="px-4 py-4 align-top font-medium whitespace-nowrap">1</td>
-                            <td class="px-4 py-4 align-top tabular-nums">Leer Innenstadt</td>
-                            <td class="px-4 py-4 align-top tabular-nums">Leer</td>
-                            <td class="px-4 py-4 align-top tabular-nums">
-                                <span class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset bg-emerald-50 text-emerald-800 ring-emerald-200">Ja</span>
-                            </td>
-                        </tr>
-                        <tr class="hover:bg-[#f2f6f7]">
-                            <td class="px-4 py-4 align-top font-medium whitespace-nowrap">3</td>
-                            <td class="px-4 py-4 align-top tabular-nums">Oldenburg</td>
-                            <td class="px-4 py-4 align-top tabular-nums">Oldenburg</td>
-                            <td class="px-4 py-4 align-top tabular-nums">
-                                <span class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset bg-emerald-50 text-emerald-800 ring-emerald-200">Ja</span>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-        </section>
-        <section tabindex="0" id="panel-attributes" aria-labelledby="tab-attributes" hidden="@(_activeTab != MasterDataTab.Attributes)">
-            <div class="max-w-full overflow-x-auto rounded-xl border border-[#e2e8ed]">
-                <table class="w-full text-left text-sm">
-                    <caption class="sr-only">Webshoprelevante Merkmalsarten und Merkmale</caption>
-                    <thead class="bg-[#f2f6f7] text-[11px] font-semibold uppercase tracking-wider text-slate-500">
-                        <tr>
-                            <th scope="col" class="whitespace-nowrap px-4 py-3">Typ-Nr.</th>
-                            <th scope="col" class="whitespace-nowrap px-4 py-3">Merkmalsart</th>
-                            <th scope="col" class="whitespace-nowrap px-4 py-3">Merkmal-Nr.</th>
-                            <th scope="col" class="whitespace-nowrap px-4 py-3">Merkmal</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-slate-100">
-                        <tr class="hover:bg-[#f2f6f7]">
-                            <td class="px-4 py-4 align-top font-medium whitespace-nowrap">1</td>
-                            <td class="px-4 py-4 align-top tabular-nums">Kragenform</td>
-                            <td class="px-4 py-4 align-top tabular-nums">4</td>
-                            <td class="px-4 py-4 align-top tabular-nums">Kentkragen</td>
-                        </tr>
-                        <tr class="hover:bg-[#f2f6f7]">
-                            <td class="px-4 py-4 align-top font-medium whitespace-nowrap">1</td>
-                            <td class="px-4 py-4 align-top tabular-nums">Kragenform</td>
-                            <td class="px-4 py-4 align-top tabular-nums">5</td>
-                            <td class="px-4 py-4 align-top tabular-nums">Button-down</td>
-                        </tr>
-                        <tr class="hover:bg-[#f2f6f7]">
-                            <td class="px-4 py-4 align-top font-medium whitespace-nowrap">2</td>
-                            <td class="px-4 py-4 align-top tabular-nums">Ärmelform</td>
-                            <td class="px-4 py-4 align-top tabular-nums">1</td>
-                            <td class="px-4 py-4 align-top tabular-nums">Langarm</td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-        </section>
-        <section tabindex="0" id="panel-delivery" aria-labelledby="tab-delivery" hidden="@(_activeTab != MasterDataTab.Delivery)">
-            <div class="max-w-full overflow-x-auto rounded-xl border border-[#e2e8ed]">
-                <table class="w-full text-left text-sm">
-                    <caption class="sr-only">Texte je Lieferstatus</caption>
-                    <thead class="bg-[#f2f6f7] text-[11px] font-semibold uppercase tracking-wider text-slate-500">
-                        <tr>
-                            <th scope="col" class="whitespace-nowrap px-4 py-3">Status</th>
-                            <th scope="col" class="whitespace-nowrap px-4 py-3">Deutsche Bezeichnung</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-slate-100">
-                        <tr class="hover:bg-[#f2f6f7]">
-                            <td class="px-4 py-4 align-top font-medium whitespace-nowrap">availableNow</td>
-                            <td class="px-4 py-4 align-top tabular-nums">
-                                <span class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset bg-emerald-50 text-emerald-800 ring-emerald-200">Sofort lieferbar</span>
-                            </td>
-                        </tr>
-                        <tr class="hover:bg-[#f2f6f7]">
-                            <td class="px-4 py-4 align-top font-medium whitespace-nowrap">availableSoon</td>
-                            <td class="px-4 py-4 align-top tabular-nums">
-                                <span class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset bg-amber-50 text-amber-900 ring-amber-200">Lieferbar in 3–5 Tagen</span>
-                            </td>
-                        </tr>
-                        <tr class="hover:bg-[#f2f6f7]">
-                            <td class="px-4 py-4 align-top font-medium whitespace-nowrap">notAvailable</td>
-                            <td class="px-4 py-4 align-top tabular-nums">
-                                <span class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset bg-slate-100 text-slate-700 ring-slate-200">Zurzeit nicht lieferbar</span>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-        </section>
-    </section>
-</main>
+@inject ToastService Toast
 
-@code {
-    private MasterDataTab _activeTab = MasterDataTab.Colors;
 
-    private enum MasterDataTab
+@code
+{
+
+  private static readonly JsonSerializerOptions ApiJsonOptions = new JsonSerializerOptions(JsonSerializerDefaults.Web)
+  {
+    Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase) }
+  };
+  
+
+  private ColorDto[]? _colors;
+  private SizeResponseDto[]? _sizes;
+  private BranchResponseDto[]? _branches;
+  private AttributeTypeResponseDto[]? _attributeTypes;
+  private DeliveryStatusResponseDto[]? _deliveries;
+
+  private bool _isLoading;
+  private string? _error;
+
+  private MasterDataTab _activeTab = MasterDataTab.Colors;
+
+  private enum MasterDataTab
+  {
+    Colors,
+    Sizes,
+    Branches,
+    Attributes,
+    Delivery
+  }
+
+
+  protected override async Task OnInitializedAsync()
+  {
+    if (!Session.IsAuthenticated || string.IsNullOrWhiteSpace(Session.ApiKey))
     {
-        Colors,
-        Sizes,
-        Branches,
-        Attributes,
-        Delivery
+      Session.Clear();
+      Navi.NavigateTo(uri: "/design-a/login");
+      return;
     }
+
+    await LoadColors();
+  }
+
+  private async Task SelectTabAsync(MasterDataTab tab)
+  {
+    if (_isLoading) return;
+
+    _activeTab = tab;
+    _error = null;
+
+    switch (tab)
+    {
+      case MasterDataTab.Colors when _colors is null:
+        await LoadColors();
+        break;
+      case MasterDataTab.Sizes when _sizes is null:
+        await LoadSizes();
+        break;
+      case MasterDataTab.Branches when _branches is null:
+        await LoadBranches();
+        break;
+      case MasterDataTab.Attributes when _attributeTypes is null:
+        await LoadAttributes();
+        break;
+      case MasterDataTab.Delivery when _deliveries is null:
+        await LoadDeliveryStatuses();
+        break;
+    }
+  }
+
+  private async Task LoadColors()
+  {
+    if (_isLoading) return;
+
+    _isLoading = true;
+    _error = null;
+    _colors = null;
+    try
+    {
+      using var res = new HttpRequestMessage(HttpMethod.Get, "api/v1/colors");
+      res.Headers.Add(name: "X-API-KEY", Session.ApiKey);
+      res.Headers.Authorization = new AuthenticationHeaderValue("Bearer", Session.Current?.AccessToken);
+
+      using var response = await Http.SendAsync(res);
+
+      if (response.StatusCode == HttpStatusCode.Unauthorized)
+      {
+        Session.Clear();
+        Navi.NavigateTo(uri: "/design-a/login");
+        return;
+      }
+
+      if (!response.IsSuccessStatusCode)
+      {
+        ErrorResponseDto? apiError = await response.Content.ReadFromJsonAsync<ErrorResponseDto>();
+        _error = apiError?.Message ?? "Die Anfrage ist fehlgeschlagen.";
+        Toast.Error(_error);
+        return;
+      }
+
+      _colors = await response.Content.ReadFromJsonAsync<ColorDto[]>(ApiJsonOptions) ?? [];
+    }
+    catch (Exception)
+    {
+      _error = "Die Stammdaten konnten nicht geladen werden.";
+      Toast.Error(_error);
+    }
+    finally
+    {
+      _isLoading = false;
+    }
+  }
+
+  private async Task LoadSizes()
+  {
+    if (_isLoading) return;
+
+    _isLoading = true;
+    _error = null;
+    _sizes = null;
+    try
+    {
+      using var res = new HttpRequestMessage(HttpMethod.Get, "api/v1/sizes");
+      res.Headers.Add(name: "X-API-KEY", Session.ApiKey);
+      res.Headers.Authorization = new AuthenticationHeaderValue("Bearer", Session.Current?.AccessToken);
+
+      using var response = await Http.SendAsync(res);
+
+      if (response.StatusCode == HttpStatusCode.Unauthorized)
+      {
+        Session.Clear();
+        Navi.NavigateTo(uri: "/design-a/login");
+        return;
+      }
+
+      if (!response.IsSuccessStatusCode)
+      {
+        ErrorResponseDto? apiError = await response.Content.ReadFromJsonAsync<ErrorResponseDto>();
+        _error = apiError?.Message ?? "Die Anfrage ist fehlgeschlagen.";
+        Toast.Error(_error);
+        return;
+      }
+
+      _sizes = await response.Content.ReadFromJsonAsync<SizeResponseDto[]>(ApiJsonOptions) ?? [];
+    }
+    catch (Exception)
+    {
+      _error = "Die Stammdaten konnten nicht geladen werden.";
+      Toast.Error(_error);
+    }
+    finally
+    {
+      _isLoading = false;
+    }
+  }
+
+  private async Task LoadBranches()
+  {
+    if (_isLoading) return;
+
+    _isLoading = true;
+    _error = null;
+    _branches = null;
+    try
+    {
+      using var res = new HttpRequestMessage(HttpMethod.Get, "api/v1/branches");
+      res.Headers.Add(name: "X-API-KEY", Session.ApiKey);
+      res.Headers.Authorization = new AuthenticationHeaderValue("Bearer", Session.Current?.AccessToken);
+
+      using var response = await Http.SendAsync(res);
+
+      if (response.StatusCode == HttpStatusCode.Unauthorized)
+      {
+        Session.Clear();
+        Navi.NavigateTo(uri: "/design-a/login");
+        return;
+      }
+
+      if (!response.IsSuccessStatusCode)
+      {
+        ErrorResponseDto? apiError = await response.Content.ReadFromJsonAsync<ErrorResponseDto>();
+        _error = apiError?.Message ?? "Die Anfrage ist fehlgeschlagen.";
+        Toast.Error(_error);
+        return;
+      }
+
+      _branches = await response.Content.ReadFromJsonAsync<BranchResponseDto[]>(ApiJsonOptions) ?? [];
+    }
+    catch (Exception)
+    {
+      _error = "Die Stammdaten konnten nicht geladen werden.";
+      Toast.Error(_error);
+    }
+    finally
+    {
+      _isLoading = false;
+    }
+  }
+
+  private async Task LoadAttributes()
+  {
+    if (_isLoading) return;
+
+    _isLoading = true;
+    _error = null;
+    _attributeTypes = null;
+    try
+    {
+      using var res = new HttpRequestMessage(HttpMethod.Get, "api/v1/attribute-types");
+      res.Headers.Add(name: "X-API-KEY", Session.ApiKey);
+      res.Headers.Authorization = new AuthenticationHeaderValue("Bearer", Session.Current?.AccessToken);
+
+      using var response = await Http.SendAsync(res);
+
+      if (response.StatusCode == HttpStatusCode.Unauthorized)
+      {
+        Session.Clear();
+        Navi.NavigateTo(uri: "/design-a/login");
+        return;
+      }
+
+      if (!response.IsSuccessStatusCode)
+      {
+        ErrorResponseDto? apiError = await response.Content.ReadFromJsonAsync<ErrorResponseDto>();
+        _error = apiError?.Message ?? "Die Anfrage ist fehlgeschlagen.";
+        Toast.Error(_error);
+        return;
+      }
+
+      _attributeTypes = await response.Content.ReadFromJsonAsync<AttributeTypeResponseDto[]>(ApiJsonOptions) ?? [];
+    }
+    catch (Exception)
+    {
+      _error = "Die Stammdaten konnten nicht geladen werden.";
+      Toast.Error(_error);
+    }
+    finally
+    {
+      _isLoading = false;
+    }
+  }
+
+  private async Task LoadDeliveryStatuses()
+  {
+    if (_isLoading) return;
+
+    _isLoading = true;
+    _error = null;
+    _deliveries = null;
+    try
+    {
+      using var res = new HttpRequestMessage(HttpMethod.Get, "api/v1/delivery-status");
+      res.Headers.Add(name: "X-API-KEY", Session.ApiKey);
+      res.Headers.Authorization = new AuthenticationHeaderValue("Bearer", Session.Current?.AccessToken);
+
+      using var response = await Http.SendAsync(res);
+
+      if (response.StatusCode == HttpStatusCode.Unauthorized)
+      {
+        Session.Clear();
+        Navi.NavigateTo(uri: "/design-a/login");
+        return;
+      }
+
+      if (!response.IsSuccessStatusCode)
+      {
+        ErrorResponseDto? apiError = await response.Content.ReadFromJsonAsync<ErrorResponseDto>();
+        _error = apiError?.Message ?? "Die Anfrage ist fehlgeschlagen.";
+        Toast.Error(_error);
+        return;
+      }
+
+      _deliveries = await response.Content.ReadFromJsonAsync<DeliveryStatusResponseDto[]>(ApiJsonOptions) ?? [];
+    }
+    catch (Exception)
+    {
+      _error = "Die Stammdaten konnten nicht geladen werden.";
+      Toast.Error(_error);
+    }
+    finally
+    {
+      _isLoading = false;
+    }
+  }
+
 }
+
+
+<PageTitle>Stammdaten</PageTitle>
+<Toaster RichColors="@true" CloseButton="@true"/>
+
+<main class="mx-auto p-5 sm:p-8 min-w-0 lg:ml-60">
+  <div class="mb-7 flex flex-wrap items-end justify-between gap-4">
+    <div>
+      <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#0f766e]">Datenportal · Stammdaten</p>
+      <h1 class="mt-2 text-3xl font-semibold leading-tight tracking-tight">Die Basis Ihrer Artikeldaten</h1>
+      <p class="mt-3 text-sm text-slate-500">@(Session.Tenant?.Name ?? "—")</p>
+    </div>
+  </div>
+
+  <section class="min-w-0 rounded-2xl border border-[#e2e8ed] bg-white p-5 shadow-xs sm:p-6">
+    <div class="mb-5 flex flex-wrap items-center justify-between gap-3">
+      <h2 class="text-base font-semibold tracking-tight">Stammdaten durchsuchen</h2>
+    </div>
+    <div role="group" aria-label="Stammdatenbereiche" class="mb-6 flex flex-wrap gap-2">
+      <button type="button" id="tab-colors" aria-controls="panel-colors"
+              class="rounded-lg border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-600 aria-pressed:border-[#0f766e] aria-pressed:bg-[#0f766e] aria-pressed:text-white focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#0f766e]"
+              disabled="@_isLoading" @onclick="() => SelectTabAsync(MasterDataTab.Colors)"
+              aria-pressed="@(_activeTab == MasterDataTab.Colors ? "true" : "false")">
+        Farben
+      </button>
+      <button type="button" id="tab-sizes" aria-controls="panel-sizes"
+              class="rounded-lg border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-600 aria-pressed:border-[#0f766e] aria-pressed:bg-[#0f766e] aria-pressed:text-white focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#0f766e]"
+              disabled="@_isLoading" @onclick="() => SelectTabAsync(MasterDataTab.Sizes)"
+              aria-pressed="@(_activeTab == MasterDataTab.Sizes ? "true" : "false")">
+        Größen
+      </button>
+      <button type="button" id="tab-branches" aria-controls="panel-branches"
+              class="rounded-lg border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-600 aria-pressed:border-[#0f766e] aria-pressed:bg-[#0f766e] aria-pressed:text-white focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#0f766e]"
+              disabled="@_isLoading" @onclick="() => SelectTabAsync(MasterDataTab.Branches)"
+              aria-pressed="@(_activeTab == MasterDataTab.Branches ? "true" : "false")">
+        Filialen
+      </button>
+      <button type="button" id="tab-attributes" aria-controls="panel-attributes"
+              class="rounded-lg border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-600 aria-pressed:border-[#0f766e] aria-pressed:bg-[#0f766e] aria-pressed:text-white focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#0f766e]"
+              disabled="@_isLoading" @onclick="() => SelectTabAsync(MasterDataTab.Attributes)"
+              aria-pressed="@(_activeTab == MasterDataTab.Attributes ? "true" : "false")">
+        Merkmalsarten
+      </button>
+      <button type="button" id="tab-delivery" aria-controls="panel-delivery"
+              class="rounded-lg border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-600 aria-pressed:border-[#0f766e] aria-pressed:bg-[#0f766e] aria-pressed:text-white focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#0f766e]"
+              disabled="@_isLoading" @onclick="() => SelectTabAsync(MasterDataTab.Delivery)"
+              aria-pressed="@(_activeTab == MasterDataTab.Delivery ? "true" : "false")">
+        Lieferstatus
+      </button>
+    </div>
+    @{
+      var hasData = _activeTab switch
+      {
+        MasterDataTab.Colors => _colors is { Length: > 0 },
+        MasterDataTab.Sizes => _sizes is { Length: > 0 },
+        MasterDataTab.Branches => _branches is { Length: > 0 },
+        MasterDataTab.Attributes => _attributeTypes is { Length: > 0 },
+        MasterDataTab.Delivery => _deliveries is { Length: > 0 },
+        _ => false
+      };
+      var showContent = !_isLoading && string.IsNullOrWhiteSpace(_error) && hasData;
+    }
+
+    @if (_isLoading)
+    {
+      <p role="status" class="rounded-xl bg-slate-50 p-4 text-sm text-slate-600">
+        Stammdaten werden geladen …
+      </p>
+    }
+    else if (!string.IsNullOrWhiteSpace(_error))
+    {
+      <p role="alert" class="rounded-xl bg-rose-50 p-4 text-sm text-rose-800">@_error</p>
+    }
+    else if (!hasData)
+    {
+      <p role="status" class="rounded-xl bg-slate-50 p-4 text-sm text-slate-600">
+        Keine Einträge gefunden.
+      </p>
+    }
+
+    <section tabindex="0" id="panel-colors" aria-labelledby="tab-colors"
+             hidden="@(_activeTab != MasterDataTab.Colors || !showContent)">
+      <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        @foreach (var color in _colors ?? [])
+        {
+          <div class="rounded-xl border border-[#e2e8ed] p-4">
+            <div class="mb-4 h-24 rounded-lg border border-slate-200"
+                 style="@($"background-color: rgb({color.Red}, {color.Green}, {color.Blue});")">
+            </div>
+            <h3 class="text-sm font-semibold">@color.Name</h3>
+            <p class="mt-2 text-xs text-slate-500">ID @color.Id · RGB @color.Red / @color.Green / @color.Blue</p>
+          </div>
+        }
+      </div>
+    </section>
+
+    <section tabindex="0" id="panel-sizes" aria-labelledby="tab-sizes"
+             hidden="@(_activeTab != MasterDataTab.Sizes || !showContent)">
+      <div class="max-w-full overflow-x-auto rounded-xl border border-[#e2e8ed]">
+        <table class="w-full text-left text-sm">
+          <caption class="sr-only">Größenstammdaten</caption>
+          <thead class="bg-[#f2f6f7] text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+          <tr>
+            <th scope="col" class="whitespace-nowrap px-4 py-3">ID</th>
+            <th scope="col" class="whitespace-nowrap px-4 py-3">Größe</th>
+            <th scope="col" class="whitespace-nowrap px-4 py-3">Größenlauf</th>
+            <th scope="col" class="whitespace-nowrap px-4 py-3">Sortierung</th>
+          </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-100">
+          @foreach (var size in _sizes ?? [])
+          {
+            <tr class="hover:bg-[#f2f6f7]">
+              <td class="px-4 py-4 align-top font-medium whitespace-nowrap">@size.Id</td>
+              <td class="px-4 py-4 align-top">@size.Name</td>
+              <td class="px-4 py-4 align-top">@size.SizeRange</td>
+              <td class="px-4 py-4 align-top tabular-nums">@size.SortOrder</td>
+            </tr>
+          }
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section tabindex="0" id="panel-branches" aria-labelledby="tab-branches"
+             hidden="@(_activeTab != MasterDataTab.Branches || !showContent)">
+      <div class="max-w-full overflow-x-auto rounded-xl border border-[#e2e8ed]">
+        <table class="w-full text-left text-sm">
+          <caption class="sr-only">Filialen des angemeldeten Mandanten</caption>
+          <thead class="bg-[#f2f6f7] text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+          <tr>
+            <th scope="col" class="whitespace-nowrap px-4 py-3">Nummer</th>
+            <th scope="col" class="whitespace-nowrap px-4 py-3">Name</th>
+            <th scope="col" class="whitespace-nowrap px-4 py-3">Ort</th>
+            <th scope="col" class="whitespace-nowrap px-4 py-3">Aktiv</th>
+          </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-100">
+          @foreach (var branch in _branches ?? [])
+          {
+            <tr class="hover:bg-[#f2f6f7]">
+              <td class="px-4 py-4 align-top font-medium whitespace-nowrap">@branch.Number</td>
+              <td class="px-4 py-4 align-top">@branch.Name</td>
+              <td class="px-4 py-4 align-top">@branch.City</td>
+              <td class="px-4 py-4 align-top">
+                <span
+                  class="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset @(branch.IsActive ? "bg-emerald-50 text-emerald-800 ring-emerald-200" : "bg-slate-100 text-slate-700 ring-slate-200")">
+                  @(branch.IsActive ? "Ja" : "Nein")
+                </span>
+              </td>
+            </tr>
+          }
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section tabindex="0" id="panel-attributes" aria-labelledby="tab-attributes"
+             hidden="@(_activeTab != MasterDataTab.Attributes || !showContent)">
+      <div class="max-w-full overflow-x-auto rounded-xl border border-[#e2e8ed]">
+        <table class="w-full text-left text-sm">
+          <caption class="sr-only">Webshoprelevante Merkmalsarten und Merkmale</caption>
+          <thead class="bg-[#f2f6f7] text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+          <tr>
+            <th scope="col" class="whitespace-nowrap px-4 py-3">Typ-Nr.</th>
+            <th scope="col" class="whitespace-nowrap px-4 py-3">Merkmalsart</th>
+            <th scope="col" class="whitespace-nowrap px-4 py-3">Merkmal-Nr.</th>
+            <th scope="col" class="whitespace-nowrap px-4 py-3">Merkmal</th>
+          </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-100">
+          @foreach (var type in _attributeTypes ?? [])
+          {
+            if (type.Attributes.Count == 0)
+            {
+              <tr class="hover:bg-[#f2f6f7]">
+                <td class="px-4 py-4 align-top font-medium whitespace-nowrap">@type.Number</td>
+                <td class="px-4 py-4 align-top">@type.Name</td>
+                <td colspan="2" class="px-4 py-4 align-top text-slate-500">Keine Merkmale</td>
+              </tr>
+            }
+            else
+            {
+              @foreach (var feature in type.Attributes)
+              {
+                <tr class="hover:bg-[#f2f6f7]">
+                  <td class="px-4 py-4 align-top font-medium whitespace-nowrap">@type.Number</td>
+                  <td class="px-4 py-4 align-top">@type.Name</td>
+                  <td class="px-4 py-4 align-top tabular-nums">@feature.Number</td>
+                  <td class="px-4 py-4 align-top">@feature.Name</td>
+                </tr>
+              }
+            }
+          }
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section tabindex="0" id="panel-delivery" aria-labelledby="tab-delivery"
+             hidden="@(_activeTab != MasterDataTab.Delivery || !showContent)">
+      <div class="max-w-full overflow-x-auto rounded-xl border border-[#e2e8ed]">
+        <table class="w-full text-left text-sm">
+          <caption class="sr-only">Texte je Lieferstatus</caption>
+          <thead class="bg-[#f2f6f7] text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+          <tr>
+            <th scope="col" class="whitespace-nowrap px-4 py-3">Status</th>
+            <th scope="col" class="whitespace-nowrap px-4 py-3">Deutsche Bezeichnung</th>
+          </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-100">
+          @foreach (var delivery in _deliveries ?? [])
+          {
+            var statusClasses = delivery.Status switch
+            {
+              DeliveryStatus.AvailableNow => "bg-emerald-50 text-emerald-800 ring-emerald-200",
+              DeliveryStatus.AvailableSoon => "bg-amber-50 text-amber-900 ring-amber-200",
+              _ => "bg-slate-100 text-slate-700 ring-slate-200"
+            };
+
+            <tr class="hover:bg-[#f2f6f7]">
+              <td class="px-4 py-4 align-top font-medium whitespace-nowrap">
+                @JsonNamingPolicy.CamelCase.ConvertName(delivery.Status.ToString())
+              </td>
+              <td class="px-4 py-4 align-top">
+                <span
+                  class="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset @statusClasses">
+                  @delivery.Text
+                </span>
+              </td>
+            </tr>
+          }
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </section>
+</main>

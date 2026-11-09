@@ -10,356 +10,350 @@
 
 @code
 {
-    private static readonly JsonSerializerOptions ApiJsonOptions = new JsonSerializerOptions(JsonSerializerDefaults.Web)
+  private static readonly JsonSerializerOptions ApiJsonOptions = new JsonSerializerOptions(JsonSerializerDefaults.Web)
+  {
+    Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase) }
+  };
+
+  [SupplyParameterFromQuery(Name = "sku")]
+  public string? UrlSku { get; set; }
+
+  private BranchStockListQueryDto _query = new BranchStockListQueryDto
+  {
+    Page = 1,
+    PageSize = 25,
+    Sku = null,
+    ArticleNumber = null,
+    Branch = null,
+    ModifiedSince = null
+  };
+
+  private PagedResponseDto<BranchStockResponseDto>? _branchStock;
+  private BranchResponseDto[]? _branches;
+
+  private bool _isLoading;
+  private string? _branchStockError;
+  private string? _branchesError;
+
+
+  protected override async Task OnInitializedAsync()
+  {
+    if (!Session.IsAuthenticated || string.IsNullOrWhiteSpace(Session.ApiKey))
     {
-        Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase) }
-    };
-
-    private BranchStockListQueryDto _query = new BranchStockListQueryDto
-    {
-        Page = 1,
-        PageSize = 25,
-        Sku = null,
-        ArticleNumber = null,
-        Branch = null,
-        ModifiedSince = null
-    };
-
-    private PagedResponseDto<BranchStockResponseDto>? _branchStock;
-    private BranchResponseDto[]? _branches;
-
-    private bool _isLoading;
-    private string? _branchStockError;
-    private string? _branchesError;
-
-
-    protected override async Task OnInitializedAsync()
-    {
-        if (!Session.IsAuthenticated || string.IsNullOrWhiteSpace(Session.ApiKey))
-        {
-            Session.Clear();
-            Navi.NavigateTo(uri: "/design-a/login");
-            return;
-        }
-
-        await Task.WhenAll(LoadBranchStockAsync(), LoadBranchesAsync());
+      Session.Clear();
+      Navi.NavigateTo(uri: "/design-a/login");
+      return;
     }
 
-    private async Task LoadBranchStockAsync()
-    {
-        if (_isLoading) return;
+    _query.Sku = UrlSku?.Trim();
+    await Task.WhenAll(LoadBranchStockAsync(), LoadBranchesAsync());
+  }
 
-        _isLoading = true;
-        _branchStockError = "";
-        _branchStock = null;
-        try
-        {
-            List<string> query = new List<string>
+  private async Task LoadBranchStockAsync()
+  {
+    if (_isLoading) return;
+
+    _isLoading = true;
+    _branchStockError = "";
+    _branchStock = null;
+    try
+    {
+      List<string> query = new List<string>
             {
                 $"page={_query.Page}",
                 $"pageSize={_query.PageSize}",
             };
 
-            if (!string.IsNullOrWhiteSpace(_query.ArticleNumber))
-                query.Add(item: $"articleNumber={Uri.EscapeDataString(_query.ArticleNumber.Trim())}");
+      if (!string.IsNullOrWhiteSpace(_query.ArticleNumber))
+        query.Add(item: $"articleNumber={Uri.EscapeDataString(_query.ArticleNumber.Trim())}");
 
-            if (!string.IsNullOrWhiteSpace(_query.Sku))
-                query.Add(item: $"sku={Uri.EscapeDataString(_query.Sku.Trim())}");
+      if (!string.IsNullOrWhiteSpace(_query.Sku))
+        query.Add(item: $"sku={Uri.EscapeDataString(_query.Sku.Trim())}");
 
-            if (_query.Branch is not null)
-                query.Add(item: $"branch={_query.Branch}");
 
-            if (_query.ModifiedSince is not null)
-            {
-                string isoDate = _query.ModifiedSince.Value.ToString(format: "o");
-                query.Add(item: $"modifiedSince={Uri.EscapeDataString(isoDate)}");
-            }
+      if (_query.Branch is not null)
+        query.Add(item: $"branch={_query.Branch}");
 
-            string requestUri = $"/api/v1/branch-stock?{string.Join(separator: "&", query)}";
+      if (_query.ModifiedSince is not null)
+      {
+        string isoDate = _query.ModifiedSince.Value.ToString(format: "o");
+        query.Add(item: $"modifiedSince={Uri.EscapeDataString(isoDate)}");
+      }
 
-            using HttpRequestMessage req = new HttpRequestMessage(HttpMethod.Get, requestUri);
+      string requestUri = $"/api/v1/branch-stock?{string.Join(separator: "&", query)}";
 
-            req.Headers.Add(name: "X-API-KEY", Session?.ApiKey);
-            req.Headers.Authorization = new AuthenticationHeaderValue(scheme: "Bearer", Session?.Current?.AccessToken);
+      using HttpRequestMessage req = new HttpRequestMessage(HttpMethod.Get, requestUri);
 
-            using HttpResponseMessage res = await Http.SendAsync(req);
+      req.Headers.Add(name: "X-API-KEY", Session?.ApiKey);
+      req.Headers.Authorization = new AuthenticationHeaderValue(scheme: "Bearer", Session?.Current?.AccessToken);
 
-            if (res.StatusCode == HttpStatusCode.Unauthorized)
-            {
-                Session?.Clear();
-                Navi.NavigateTo(uri: "/design-a/login");
-                return;
-            }
+      using HttpResponseMessage res = await Http.SendAsync(req);
 
-            if (!res.IsSuccessStatusCode)
-            {
-                ErrorResponseDto? apiErr = await res.Content.ReadFromJsonAsync<ErrorResponseDto>();
-                _branchStockError = apiErr?.Message ?? "Die Anfrage ist fehlgeschlagen.";
-                Toast.Error(_branchStockError);
-                return;
-            }
+      if (res.StatusCode == HttpStatusCode.Unauthorized)
+      {
+        Session?.Clear();
+        Navi.NavigateTo(uri: "/design-a/login");
+        return;
+      }
 
-            _branchStock = await res.Content.ReadFromJsonAsync<PagedResponseDto<BranchStockResponseDto>>(ApiJsonOptions);
-        }
-        catch (Exception)
-        {
-            _branchStockError = "Die API konnte nicht erreicht werden.";
-            Toast.Error(_branchStockError);
-        }
-        finally
-        {
-            _isLoading = false;
-        }
+      if (!res.IsSuccessStatusCode)
+      {
+        ErrorResponseDto? apiErr = await res.Content.ReadFromJsonAsync<ErrorResponseDto>();
+        _branchStockError = apiErr?.Message ?? "Die Anfrage ist fehlgeschlagen.";
+        Toast.Error(_branchStockError);
+        return;
+      }
+
+      _branchStock = await res.Content.ReadFromJsonAsync<PagedResponseDto<BranchStockResponseDto>>(ApiJsonOptions);
     }
-
-    private async Task LoadBranchesAsync()
+    catch (Exception)
     {
-        _branchesError = "";
-        try
-        {
-            using HttpRequestMessage req = new HttpRequestMessage(HttpMethod.Get, requestUri: "api/v1/branches");
-            req.Headers.Add(name: "X-API-KEY", Session?.ApiKey);
-            req.Headers.Authorization = new AuthenticationHeaderValue(scheme: "Bearer", Session?.Current?.AccessToken);
-
-            using HttpResponseMessage res = await Http.SendAsync(req);
-
-            if (res.StatusCode == HttpStatusCode.Unauthorized)
-            {
-                Session?.Clear();
-                Navi.NavigateTo("/design-a/login");
-                return;
-            }
-
-            if (!res.IsSuccessStatusCode)
-            {
-                ErrorResponseDto? apiErr = await res.Content.ReadFromJsonAsync<ErrorResponseDto>();
-                _branchesError = apiErr?.Message ?? "Die Anfrage ist fehlgeschlagen.";
-                Toast.Error(_branchesError);
-                return;
-            }
-
-            _branches = await res.Content.ReadFromJsonAsync<BranchResponseDto[]>();
-        }
-        catch (HttpRequestException)
-        {
-            _branchesError = "Die API konnte nicht erreicht werden.";
-            Toast.Error(_branchesError);
-        }
-        catch (OperationCanceledException)
-        {
-            _branchesError = "Die Anfrage wurde abgebrochen oder hat zu lange gedauert.";
-            Toast.Error(_branchesError);
-        }
-        catch (Exception)
-        {
-            _branchesError = "Bei der Verarbeitung der Anfrage ist ein unerwarteter Fehler aufgetreten.";
-            Toast.Error(_branchesError);
-        }
+      _branchStockError = "Die API konnte nicht erreicht werden.";
+      Toast.Error(_branchStockError);
     }
-
-    private Task HandleSubmit()
+    finally
     {
-        _query.Page = 1;
-        return LoadBranchStockAsync();
+      _isLoading = false;
     }
+  }
 
-    private async Task NextPageAsync()
+  private async Task LoadBranchesAsync()
+  {
+    _branchesError = "";
+    try
     {
-        if (_isLoading) return;
-        if (_branchStock != null && _query.Page < _branchStock.TotalPages)
-        {
-            _query.Page++;
-            await LoadBranchStockAsync();
-        }
-    }
+      using HttpRequestMessage req = new HttpRequestMessage(HttpMethod.Get, requestUri: "api/v1/branches");
+      req.Headers.Add(name: "X-API-KEY", Session?.ApiKey);
+      req.Headers.Authorization = new AuthenticationHeaderValue(scheme: "Bearer", Session?.Current?.AccessToken);
 
-    private async Task PreviousPageAsync()
+      using HttpResponseMessage res = await Http.SendAsync(req);
+
+      if (res.StatusCode == HttpStatusCode.Unauthorized)
+      {
+        Session?.Clear();
+        Navi.NavigateTo("/design-a/login");
+        return;
+      }
+
+      if (!res.IsSuccessStatusCode)
+      {
+        ErrorResponseDto? apiErr = await res.Content.ReadFromJsonAsync<ErrorResponseDto>();
+        _branchesError = apiErr?.Message ?? "Die Anfrage ist fehlgeschlagen.";
+        Toast.Error(_branchesError);
+        return;
+      }
+
+      _branches = await res.Content.ReadFromJsonAsync<BranchResponseDto[]>();
+    }
+    catch (HttpRequestException)
     {
-        if (_isLoading) return;
-        if (_query.Page > 1)
-        {
-            _query.Page--;
-            await LoadBranchStockAsync();
-        }
+      _branchesError = "Die API konnte nicht erreicht werden.";
+      Toast.Error(_branchesError);
     }
+    catch (OperationCanceledException)
+    {
+      _branchesError = "Die Anfrage wurde abgebrochen oder hat zu lange gedauert.";
+      Toast.Error(_branchesError);
+    }
+    catch (Exception)
+    {
+      _branchesError = "Bei der Verarbeitung der Anfrage ist ein unerwarteter Fehler aufgetreten.";
+      Toast.Error(_branchesError);
+    }
+  }
 
-    private int FirstEntry => _branchStock is null || _branchStock.Data.Count == 0 ? 0 : (_branchStock.Page - 1) * _branchStock.PageSize + 1;
-    private int LastEntry => _branchStock is null || _branchStock.Data.Count == 0 ? 0 : FirstEntry + _branchStock.Data.Count - 1;
+  private Task HandleSubmit()
+  {
+    _query.Page = 1;
+    return LoadBranchStockAsync();
+  }
+
+  private async Task NextPageAsync()
+  {
+    if (_isLoading) return;
+    if (_branchStock != null && _query.Page < _branchStock.TotalPages)
+    {
+      _query.Page++;
+      await LoadBranchStockAsync();
+    }
+  }
+
+  private async Task PreviousPageAsync()
+  {
+    if (_isLoading) return;
+    if (_query.Page > 1)
+    {
+      _query.Page--;
+      await LoadBranchStockAsync();
+    }
+  }
+
+  private int FirstEntry => _branchStock is null || _branchStock.Data.Count == 0 ? 0 : (_branchStock.Page - 1) *
+_branchStock.PageSize + 1;
+  private int LastEntry => _branchStock is null || _branchStock.Data.Count == 0 ? 0 : FirstEntry + _branchStock.Data.Count
+- 1;
 }
 
 
-<PageTitle>Filialbestellungen</PageTitle>
+<PageTitle>Filialbestände</PageTitle>
 
-<Toaster RichColors="@true" CloseButton="@true"/>
+<Toaster RichColors="@true" CloseButton="@true" />
 
 <main class="mx-auto p-5 sm:p-8 min-w-0 lg:ml-60">
-    <div class="mb-7 flex flex-wrap items-end justify-between gap-4">
-        <div>
-            <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#0f766e]">Datenportal · Filialbestände</p>
-            <h1 class="mt-2 text-3xl font-semibold leading-tight tracking-tight">Bestände nach Standort</h1>
-            <p class="mt-3 text-sm text-slate-500">@Session?.Tenant?.Name</p>
-        </div>
+  <div class="mb-7 flex flex-wrap items-end justify-between gap-4">
+    <div>
+      <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#0f766e]">Datenportal · Filialbestände</p>
+      <h1 class="mt-2 text-3xl font-semibold leading-tight tracking-tight">Bestände nach Standort</h1>
+      <p class="mt-3 text-sm text-slate-500">@Session?.Tenant?.Name</p>
+    </div>
+  </div>
+
+  <EditForm Model="_query" OnValidSubmit="HandleSubmit" class="mb-6 rounded-2xl border border-[#e2e8ed] bg-white p-5">
+    <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+
+      <label class="block text-xs font-semibold text-slate-600">
+        Artikelnummer:
+        <InputText @bind-Value="_query.ArticleNumber" type="text"
+                   class="mt-2 min-h-11 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-[#0f766e] focus:ring-2 focus:ring-[#0f766e]/20"
+                   placeholder="z. B. 100234" />
+      </label>
+
+      <label class="block text-xs font-semibold text-slate-600">
+        SKU:
+        <InputText @bind-Value="_query.Sku"
+                   class="mt-2 min-h-11 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-[#0f766e] focus:ring-2 focus:ring-[#0f766e]/20"
+                   placeholder="z. B. 100234-0815-042" />
+      </label>
+
+      <label class="block text-xs font-semibold text-slate-600">
+        Filiale:
+        <InputSelect @bind-Value="_query.Branch"
+                     class="mt-2 min-h-11 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-[#0f766e] focus:ring-2 focus:ring-[#0f766e]/20">
+          <option value="">-- Alle Filialen --</option>
+          @if (_branches != null)
+            @foreach (BranchResponseDto branch in _branches)
+            {
+              <option value="@branch.Number">@branch.Name</option>
+            }
+        </InputSelect>
+      </label>
+
+      <label class="block text-xs font-semibold text-slate-600">
+        Geändert seit (UTC):
+        <InputDate @bind-Value="_query.ModifiedSince"
+                   class="mt-2 min-h-11 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-[#0f766e] focus:ring-2 focus:ring-[#0f766e]/20" />
+      </label>
+
+      <label class="block text-xs font-semibold text-slate-600">
+        Einträge pro Seite
+        <InputSelect @bind-Value="_query.PageSize"
+                     class="mt-2 min-h-11 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-[#0f766e] focus:ring-2 focus:ring-[#0f766e]/20">
+          <option value="5">5</option>
+          <option value="10">10</option>
+          <option value="25">25</option>
+          <option value="100">100</option>
+          <option value="1000">1000</option>
+          <option value="5000">5000</option>
+        </InputSelect>
+      </label>
+
     </div>
 
-    <EditForm
-        Model="_query"
-        OnValidSubmit="HandleSubmit"
-        class="mb-6 rounded-2xl border border-[#e2e8ed] bg-white p-5">
-        <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+    <div class="mt-5 flex items-center justify-end gap-4">
+      <div class="flex flex-wrap gap-2">
+        <button disabled="@_isLoading" type="submit"
+                class="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#0f766e] bg-[#0f766e] text-white hover:brightness-90">
+          <Icon Name="LucideIcon.Search"></Icon> Filter anwenden
+        </button>
+      </div>
+    </div>
+  </EditForm>
 
-            <label class="block text-xs font-semibold text-slate-600">
-                Artikelnummer:
-                <InputText
-                    @bind-Value="_query.ArticleNumber"
-                    type="text"
-                    class="mt-2 min-h-11 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-[#0f766e] focus:ring-2 focus:ring-[#0f766e]/20"
-                    placeholder="z. B. 100234"/>
-            </label>
+  <section class="min-w-0 rounded-2xl border border-[#e2e8ed] bg-white p-5 shadow-xs sm:p-6">
+    <div class="mb-5 flex flex-wrap items-center justify-between gap-3">
+      <h2 class="text-base font-semibold tracking-tight">Bestände je Filiale</h2>
+    </div>
+    <div class="max-w-full overflow-x-auto rounded-xl border border-[#e2e8ed]">
+      <table class="w-full text-left text-sm">
+        <caption class="sr-only">Statische Beispieldaten für branch-stock</caption>
+        <thead class="bg-[#f2f6f7] text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+          <tr>
+            <th scope="col" class="whitespace-nowrap px-4 py-3">SKU</th>
+            <th scope="col" class="whitespace-nowrap px-4 py-3">Artikel</th>
+            <th scope="col" class="whitespace-nowrap px-4 py-3">Filial-Nr.</th>
+            <th scope="col" class="whitespace-nowrap px-4 py-3">Filiale</th>
+            <th scope="col" class="whitespace-nowrap px-4 py-3">Bestand</th>
+            <th scope="col" class="whitespace-nowrap px-4 py-3">Geändert (UTC)</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100">
+          @if (_isLoading)
+          {
+            <tr>
+              <td colspan="6" role="status">
+                Preise und Bestände werden geladen …
+              </td>
+            </tr>
+          }
+          else if (!string.IsNullOrWhiteSpace(_branchStockError))
+          {
+            <tr>
+              <td colspan="6" role="alert" class="text-red-700">
+                @_branchStockError
+              </td>
+            </tr>
+          }
+          else if (_branchStock is null || _branchStock.Data.Count == 0)
+          {
+            <tr>
+              <td colspan="6">Keine Daten gefunden.</td>
+            </tr>
+          }
+          else
+          {
+            @foreach (var x in _branchStock.Data)
+            {
+              <tr class="hover:bg-[#f2f6f7]">
+                <td class="px-4 py-4 align-top font-medium whitespace-nowrap">
+                  <a class="text-[#0f766e] underline" href="/design-a/sku-detail/@x.Sku">@x.Sku</a>
+                </td>
+                <td class="px-4 py-4 align-top tabular-nums whitespace-nowrap">
+                  <a href="/design-a/article-detail/@x.ArticleNumber" class="text-[#0f766e] underline">@x.ArticleNumber</a>
+                </td>
+                <td class="px-4 py-4 align-top tabular-nums whitespace-nowrap">@x.Branch</td>
 
-            <label class="block text-xs font-semibold text-slate-600">
-                SKU:
-                <InputText
-                    @bind-Value="_query.Sku"
-                    class="mt-2 min-h-11 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-[#0f766e] focus:ring-2 focus:ring-[#0f766e]/20" placeholder="z. B. 100234-0815-042"/>
-            </label>
+                <td class="px-4 py-4 align-top tabular-nums whitespace-nowrap">
+                  @(_branches?.FirstOrDefault(b => b.Number == x.Branch)?.Name ?? "—")
+                </td>
 
-            <label class="block text-xs font-semibold text-slate-600">
-                Filiale:
-                <InputSelect
-                    @bind-Value="_query.Branch"
-                    class="mt-2 min-h-11 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-[#0f766e] focus:ring-2 focus:ring-[#0f766e]/20">
-                    <option value="">-- Alle Filialen --</option>
-                    @if (_branches != null)
-                        @foreach (BranchResponseDto branch in _branches)
-                    {
-                        <option value="@branch.Number">@branch.Name</option>
-                    }
-                </InputSelect>
-            </label>
+                <td class="px-4 py-4 align-top tabular-nums whitespace-nowrap">@x.Stock</td>
+                <td class="px-4 py-4 align-top tabular-nums whitespace-nowrap">@x.ModifiedAt</td>
+              </tr>
+            }
+          }
 
-            <label class="block text-xs font-semibold text-slate-600">
-                Geändert seit (UTC):
-                <InputDate
-                    @bind-Value="_query.ModifiedSince"
-                    class="mt-2 min-h-11 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-[#0f766e] focus:ring-2 focus:ring-[#0f766e]/20"/>
-            </label>
 
-            <label class="block text-xs font-semibold text-slate-600">
-                Einträge pro Seite
-                <InputSelect
-                    @bind-Value="_query.PageSize"
-                    class="mt-2 min-h-11 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-[#0f766e] focus:ring-2 focus:ring-[#0f766e]/20">
-                    <option value="5">5</option>
-                    <option value="10">10</option>
-                    <option value="25">25</option>
-                    <option value="100">100</option>
-                    <option value="1000">1000</option>
-                    <option value="5000">5000</option>
-                </InputSelect>
-            </label>
+        </tbody>
+      </table>
+    </div>
+    <div class="mt-4 flex flex-wrap items-center justify-between gap-3">
+      <p class="text-sm text-slate-500">@FirstEntry – @LastEntry von @(_branchStock?.TotalCount ?? 0) Einträgen</p>
+      <div class="flex items-center gap-2">
+        <button @onclick="PreviousPageAsync" disabled="@(_isLoading || _branchStock is null || _branchStock.Page <= 1)"
+                type="button"
+                class="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#0f766e] border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40">
+          ← Zurück
+        </button>
 
+        <span class="px-2 text-sm tabular-nums">Seite @(_branchStock?.Page ?? 0) / @(_branchStock?.TotalPages ??
+                                                                                                                                            0)</span>
+
+          <button @onclick="NextPageAsync"
+                  disabled="@(_isLoading || _branchStock is null || _branchStock.Page >= _branchStock.TotalPages)" type="button"
+                  class="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#0f766e] border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40">
+            Weiter →
+          </button>
         </div>
-
-        <div class="mt-5 flex flex-wrap items-center justify-between gap-4">
-            <div class="flex flex-wrap gap-2">
-                <button
-                    disabled="@_isLoading"
-                    type="submit"
-                    class="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#0f766e] bg-[#0f766e] text-white hover:brightness-90">
-                    <Icon Name="LucideIcon.Search"></Icon> Filter anwenden
-                </button>
-            </div>
-        </div>
-    </EditForm>
-
-    <section class="min-w-0 rounded-2xl border border-[#e2e8ed] bg-white p-5 shadow-xs sm:p-6">
-        <div class="mb-5 flex flex-wrap items-center justify-between gap-3">
-            <h2 class="text-base font-semibold tracking-tight">Bestände je Filiale</h2>
-        </div>
-        <div class="max-w-full overflow-x-auto rounded-xl border border-[#e2e8ed]">
-            <table class="w-full text-left text-sm">
-                <caption class="sr-only">Statische Beispieldaten für branch-stock</caption>
-                <thead class="bg-[#f2f6f7] text-[11px] font-semibold uppercase tracking-wider text-slate-500">
-                <tr>
-                    <th scope="col" class="whitespace-nowrap px-4 py-3">SKU</th>
-                    <th scope="col" class="whitespace-nowrap px-4 py-3">Artikel</th>
-                    <th scope="col" class="whitespace-nowrap px-4 py-3">Filial-Nr.</th>
-                    <th scope="col" class="whitespace-nowrap px-4 py-3">Filiale</th>
-                    <th scope="col" class="whitespace-nowrap px-4 py-3">Bestand</th>
-                    <th scope="col" class="whitespace-nowrap px-4 py-3">Geändert (UTC)</th>
-                </tr>
-                </thead>
-                <tbody class="divide-y divide-slate-100">
-                @if (_isLoading)
-                {
-                    <tr>
-                        <td colspan="6" role="status">
-                            Preise und Bestände werden geladen …
-                        </td>
-                    </tr>
-                }
-                else if (!string.IsNullOrWhiteSpace(_branchStockError))
-                {
-                    <tr>
-                        <td colspan="6" role="alert" class="text-red-700">
-                            @_branchStockError
-                        </td>
-                    </tr>
-                }
-                else if (_branchStock is null || _branchStock.Data.Count == 0)
-                {
-                    <tr>
-                        <td colspan="6">Keine Daten gefunden.</td>
-                    </tr>
-                }
-                else
-                {
-                    @foreach (var x in _branchStock.Data)
-                    {
-                        <tr class="hover:bg-[#f2f6f7]">
-                            <td class="px-4 py-4 align-top font-medium whitespace-nowrap">
-                                <a class="text-[#0f766e] underline" href="/design-a/sku-detail/@x.Sku">@x.Sku</a>
-                            </td>
-                            <td class="px-4 py-4 align-top tabular-nums whitespace-nowrap">
-                                <a href="/design-a/article-detail/@x.ArticleNumber" class="text-[#0f766e] underline">@x.ArticleNumber</a>
-                            </td>
-                            <td class="px-4 py-4 align-top tabular-nums whitespace-nowrap">@x.Branch</td>
-
-                            <td class="px-4 py-4 align-top tabular-nums whitespace-nowrap">
-                                @(_branches?.FirstOrDefault(b => b.Number == x.Branch)?.Name ?? "—")
-                            </td>
-
-                            <td class="px-4 py-4 align-top tabular-nums whitespace-nowrap">@x.Stock</td>
-                            <td class="px-4 py-4 align-top tabular-nums whitespace-nowrap">@x.ModifiedAt</td>
-                        </tr>
-                    }
-                }
-
-
-                </tbody>
-            </table>
-        </div>
-        <div class="mt-4 flex flex-wrap items-center justify-between gap-3">
-            <p class="text-sm text-slate-500">@FirstEntry – @LastEntry von @(_branchStock?.TotalCount ?? 0) Einträgen</p>
-            <div class="flex items-center gap-2">
-                <button
-                    @onclick="PreviousPageAsync"
-                    disabled="@(_isLoading || _branchStock is null || _branchStock.Page <= 1)"
-                    type="button"
-                    class="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#0f766e] border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40">
-                    ← Zurück
-                </button>
-
-                <span class="px-2 text-sm tabular-nums">Seite @(_branchStock?.Page ?? 0) / @(_branchStock?.TotalPages ?? 0)</span>
-
-                <button
-                    @onclick="NextPageAsync"
-                    disabled="@(_isLoading || _branchStock is null || _branchStock.Page >= _branchStock.TotalPages)"
-                    type="button"
-                    class="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#0f766e] border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40">
-                    Weiter →
-                </button>
-            </div>
-        </div>
+      </div>
     </section>
-</main>
+  </main>

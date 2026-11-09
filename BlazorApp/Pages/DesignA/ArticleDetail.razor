@@ -10,532 +10,556 @@
 
 
 
-@code{
-    [Parameter] public string ArticleNumber { get; set; } = string.Empty;
+@code {
+  [Parameter] public string ArticleNumber { get; set; } = string.Empty;
 
-    private static readonly JsonSerializerOptions ApiJsonOptions = new JsonSerializerOptions(JsonSerializerDefaults.Web)
+  private static readonly JsonSerializerOptions ApiJsonOptions = new JsonSerializerOptions(JsonSerializerDefaults.Web)
+  {
+    Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase) }
+  };
+
+  private ArticleResponseDto? _article;
+  private CategoryResponseDto[]? _categories;
+
+  private bool _isLoading;
+  private string? _articleError;
+  private string? _categoriesError;
+
+  private string[] _relateds = [];
+  private string[] _accessories = [];
+  private List<IGrouping<TextType, ArticleTextDto>> _texts = [];
+
+  protected override async Task OnParametersSetAsync()
+  {
+    if (!Session.IsAuthenticated || string.IsNullOrWhiteSpace(Session.ApiKey))
     {
-        Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase) }
-    };
-
-    private ArticleResponseDto? _article;
-    private CategoryResponseDto[]? _categories;
-
-    private bool _isLoading;
-    private string? _articleError;
-    private string? _categoriesError;
-
-    private string[] _relateds = [];
-    private string[] _accessories = [];
-    private List<IGrouping<TextType, ArticleTextDto>> _texts = [];
-
-    protected override async Task OnParametersSetAsync()
-    {
-        if (!Session.IsAuthenticated || string.IsNullOrWhiteSpace(Session.ApiKey))
-        {
-            Session.Clear();
-            Navi.NavigateTo("/design-a/login");
-            return;
-        }
-
-        await Task.WhenAll(LoadArticleAsync(), LoadCategoriesAsync());
+      Session.Clear();
+      Navi.NavigateTo("/design-a/login");
+      return;
     }
 
-    private async Task LoadArticleAsync()
+    await Task.WhenAll(LoadArticleAsync(), LoadCategoriesAsync());
+  }
+
+  private async Task LoadArticleAsync()
+  {
+    _isLoading = true;
+    _articleError = null;
+    _article = null;
+
+    try
     {
-        _isLoading = true;
-        _articleError = null;
-        _article = null;
+      using HttpRequestMessage req = new HttpRequestMessage(HttpMethod.Get, requestUri: $"/api/v1/articles/{ArticleNumber}");
+      req.Headers.Add(name: "X-API-KEY", Session?.ApiKey);
+      req.Headers.Authorization = new AuthenticationHeaderValue(scheme: "Bearer", Session?.Current?.AccessToken);
 
-        try
-        {
-            using HttpRequestMessage req = new HttpRequestMessage(HttpMethod.Get, requestUri: $"/api/v1/articles/{ArticleNumber}");
-            req.Headers.Add(name: "X-API-KEY", Session?.ApiKey);
-            req.Headers.Authorization = new AuthenticationHeaderValue(scheme: "Bearer", Session?.Current?.AccessToken);
+      using HttpResponseMessage res = await Http.SendAsync(req);
 
-            using HttpResponseMessage res = await Http.SendAsync(req);
+      if (res.StatusCode == HttpStatusCode.Unauthorized)
+      {
+        Session?.Clear();
+        Navi.NavigateTo(uri: "/design-a/login");
+        return;
+      }
 
-            if (res.StatusCode == HttpStatusCode.Unauthorized)
-            {
-                Session?.Clear();
-                Navi.NavigateTo(uri: "/design-a/login");
-                return;
-            }
+      if (!res.IsSuccessStatusCode)
+      {
+        ErrorResponseDto? apiError = await res.Content.ReadFromJsonAsync<ErrorResponseDto>(ApiJsonOptions);
+        _articleError = apiError?.Message ?? "Die Anfrage ist fehlgeschlagen.";
+        Toast.Error(_articleError);
+        return;
+      }
 
-            if (!res.IsSuccessStatusCode)
-            {
-                ErrorResponseDto? apiError = await res.Content.ReadFromJsonAsync<ErrorResponseDto>(ApiJsonOptions);
-                _articleError = apiError?.Message ?? "Die Anfrage ist fehlgeschlagen.";
-                Toast.Error(_articleError);
-                return;
-            }
+      _article = await res.Content.ReadFromJsonAsync<ArticleResponseDto>(ApiJsonOptions);
 
-            _article = await res.Content.ReadFromJsonAsync<ArticleResponseDto>(ApiJsonOptions);
+      _relateds = _article?.Relations.Where(x => x.Type == RelationType.Related).Select(x => x.ArticleNumber).ToArray() ?? [];
 
-            _relateds = _article?.Relations.Where(x => x.Type == RelationType.Related).Select(x => x.ArticleNumber).ToArray() ?? [];
+      _accessories = _article?.Relations.Where(x => x.Type == RelationType.Accessory).Select(x => x.ArticleNumber).ToArray()
+                     ?? [];
 
-            _accessories = _article?.Relations.Where(x => x.Type == RelationType.Accessory).Select(x => x.ArticleNumber).ToArray() ?? [];
-
-            _texts = _article?.Texts.GroupBy(text => text.Type).OrderBy(group => group.Key).ToList() ?? [];
-        }
-        catch (HttpRequestException)
-        {
-            _articleError = "Die API konnte nicht erreicht werden.";
-            Toast.Error(_articleError);
-        }
-        catch (OperationCanceledException)
-        {
-            _articleError = "Die Anfrage wurde abgebrochen oder hat zu lange gedauert.";
-            Toast.Error(_articleError);
-        }
-        catch (Exception)
-        {
-            _articleError = "Bei der Verarbeitung der Anfrage ist ein unerwarteter Fehler aufgetreten.";
-            Toast.Error(_articleError);
-        }
-        finally
-        {
-            _isLoading = false;
-        }
+      _texts = _article?.Texts.GroupBy(text => text.Type).OrderBy(group => group.Key).ToList() ?? [];
     }
-
-    private async Task LoadCategoriesAsync()
+    catch (HttpRequestException)
     {
-        _categoriesError = null;
-        try
-        {
-            using var req = new HttpRequestMessage(HttpMethod.Get, "api/v1/categories");
-            req.Headers.Add(name: "X-API-KEY", Session?.ApiKey);
-            req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", Session?.Current?.AccessToken);
-
-            using var res = await Http.SendAsync(req);
-
-            if (res.StatusCode == HttpStatusCode.Unauthorized)
-            {
-                Session?.Clear();
-                Navi.NavigateTo(uri: "/design-a/login");
-                return;
-            }
-
-            if (!res.IsSuccessStatusCode)
-            {
-                ErrorResponseDto? apiError = await res.Content.ReadFromJsonAsync<ErrorResponseDto>();
-                _categoriesError = apiError?.Message ?? "Die Anfrage ist fehlgeschlagen.";
-                Toast.Error(_categoriesError);
-                return;
-            }
-
-            _categories = await res.Content.ReadFromJsonAsync<CategoryResponseDto[]>(ApiJsonOptions);
-        }
-        catch (HttpRequestException)
-        {
-            _categoriesError = "Die API konnte nicht erreicht werden.";
-            Toast.Error(_categoriesError);
-        }
-        catch (OperationCanceledException)
-        {
-            _categoriesError = "Die Anfrage wurde abgebrochen oder hat zu lange gedauert.";
-            Toast.Error(_categoriesError);
-        }
-        catch (Exception)
-        {
-            _categoriesError = "Bei der Verarbeitung der Anfrage ist ein unerwarteter Fehler aufgetreten.";
-            Toast.Error(_categoriesError);
-        }
+      _articleError = "Die API konnte nicht erreicht werden.";
+      Toast.Error(_articleError);
     }
+    catch (OperationCanceledException)
+    {
+      _articleError = "Die Anfrage wurde abgebrochen oder hat zu lange gedauert.";
+      Toast.Error(_articleError);
+    }
+    catch (Exception)
+    {
+      _articleError = "Bei der Verarbeitung der Anfrage ist ein unerwarteter Fehler aufgetreten.";
+      Toast.Error(_articleError);
+    }
+    finally
+    {
+      _isLoading = false;
+    }
+  }
+
+  private async Task LoadCategoriesAsync()
+  {
+    _categoriesError = null;
+    try
+    {
+      using var req = new HttpRequestMessage(HttpMethod.Get, "api/v1/categories");
+      req.Headers.Add(name: "X-API-KEY", Session?.ApiKey);
+      req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", Session?.Current?.AccessToken);
+
+      using var res = await Http.SendAsync(req);
+
+      if (res.StatusCode == HttpStatusCode.Unauthorized)
+      {
+        Session?.Clear();
+        Navi.NavigateTo(uri: "/design-a/login");
+        return;
+      }
+
+      if (!res.IsSuccessStatusCode)
+      {
+        ErrorResponseDto? apiError = await res.Content.ReadFromJsonAsync<ErrorResponseDto>();
+        _categoriesError = apiError?.Message ?? "Die Anfrage ist fehlgeschlagen.";
+        Toast.Error(_categoriesError);
+        return;
+      }
+
+      _categories = await res.Content.ReadFromJsonAsync<CategoryResponseDto[]>(ApiJsonOptions);
+    }
+    catch (HttpRequestException)
+    {
+      _categoriesError = "Die API konnte nicht erreicht werden.";
+      Toast.Error(_categoriesError);
+    }
+    catch (OperationCanceledException)
+    {
+      _categoriesError = "Die Anfrage wurde abgebrochen oder hat zu lange gedauert.";
+      Toast.Error(_categoriesError);
+    }
+    catch (Exception)
+    {
+      _categoriesError = "Bei der Verarbeitung der Anfrage ist ein unerwarteter Fehler aufgetreten.";
+      Toast.Error(_categoriesError);
+    }
+  }
 
 }
 
 <PageTitle>Artikel-Detail</PageTitle>
 
-<Toaster RichColors="@true" CloseButton="@true"/>
+<Toaster RichColors="@true" CloseButton="@true" />
 
 <main class="mx-auto p-5 sm:p-8 min-w-0 lg:ml-60">
 
-<div class="mb-7 flex flex-wrap items-end justify-between gap-4">
+  <div class="mb-7 flex flex-wrap items-end justify-between gap-4">
     <div>
-        <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#0f766e]">Datenportal · Artikeldetail</p>
-        <h1 class="mt-2 text-3xl font-semibold leading-tight tracking-tight">@_article?.Name</h1>
-        <p class="mt-3 text-sm text-slate-500">@Session?.Tenant?.Name</p>
+      <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#0f766e]">Datenportal · Artikeldetail</p>
+      <h1 class="mt-2 text-3xl font-semibold leading-tight tracking-tight">@_article?.Name</h1>
+      <p class="mt-3 text-sm text-slate-500">@Session?.Tenant?.Name</p>
     </div>
-    <a href="/design-a/articles" class="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#0f766e]">
-        <Icon Name="LucideIcon.ArrowLeft" Class="size-4"/>
-        Zur Artikelliste
+    <a href="/design-a/articles"
+       class="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#0f766e]">
+      <Icon Name="LucideIcon.ArrowLeft" Class="size-4" />
+      Zur Artikelliste
     </a>
-</div>
+  </div>
 
-@if (_isLoading)
-{
+  @if (_isLoading)
+  {
     <p role="status">Artikel wird geladen …</p>
-}
-else if (!string.IsNullOrWhiteSpace(_articleError))
-{
+  }
+  else if (!string.IsNullOrWhiteSpace(_articleError))
+  {
     <p role="alert" class="text-red-700">@_articleError</p>
-}
-else if (_article is null)
-{
+  }
+  else if (_article is null)
+  {
     <p>Keine Artikeldaten vorhanden.</p>
-}
-else
-{
+  }
+  else
+  {
     <div class="space-y-6">
-    <section class="min-w-0 rounded-2xl border border-[#e2e8ed] bg-white p-5 shadow-xs sm:p-6">
+      <section class="min-w-0 rounded-2xl border border-[#e2e8ed] bg-white p-5 shadow-xs sm:p-6">
         <div class="mb-5 flex flex-wrap items-center justify-between gap-3">
-            <h2 class="text-base font-semibold tracking-tight">Artikel @_article?.ArticleNumber</h2>
+          <h2 class="text-base font-semibold tracking-tight">Artikel @_article.ArticleNumber</h2>
         </div>
         <div class="grid items-center gap-6 md:grid-cols-[220px_minmax(0,1fr)]">
-            <div class="rounded-xl bg-[#f2f6f7] p-4">
-                <div class="flex h-52 items-center justify-center text-[#153751]">
-                    <Icon Name="LucideIcon.Shirt" Class="size-36"/>
-                </div>
-                <p class="text-center text-[11px] text-slate-500">Bildplatzhalter</p>
+          <div class="rounded-xl bg-[#f2f6f7] p-4">
+            <div class="flex h-52 items-center justify-center text-[#153751]">
+              <Icon Name="LucideIcon.Shirt" Class="size-36" />
             </div>
-            <div>
-                <p class="text-xs font-semibold uppercase tracking-widest text-[#0f766e]">@_article?.Label</p>
-                <h2 class="mt-3 text-2xl font-semibold tracking-tight">@_article?.Name</h2>
-                <p class="mt-3 max-w-xl text-sm leading-7 text-slate-600">@_article?.Description.</p>
-                <div class="mt-5 flex flex-wrap gap-2">
-                    <span
-                        class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset @(_article.IsOrderable ? "bg-emerald-50 text-emerald-800 ring-emerald-200" : "bg-slate-100 text-slate-700 ring-slate-200")">
-                        Bestellbar
-                    </span>
-                    <span
-                        class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset @(_article.IsSearchable ? "bg-emerald-50 text-emerald-800 ring-emerald-200" : "bg-slate-100 text-slate-700 ring-slate-200")">
-                        Suchbar
-                    </span>
-                    <span
-                        class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset @(_article.IsFreeShipping ? "bg-emerald-50 text-emerald-800 ring-emerald-200" : "bg-slate-100 text-slate-700 ring-slate-200")">
-                        Gratisversand
-                    </span>
-                    <span
-                        class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset @(_article.IsDiscountable ? "bg-emerald-50 text-emerald-800 ring-emerald-200" : "bg-slate-100 text-slate-700 ring-slate-200")">
-                        Rabattfähig
-                    </span>
-                    <span
-                        class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset @(_article.IsDiscontinued ? "bg-rose-50 text-rose-800 ring-rose-200" : "bg-slate-100 text-slate-700 ring-slate-200")">
-                        Nicht mehr vertrieben
-                    </span>
-                    <span
-                        class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset @(_article.IsDeleted ? "bg-rose-50 text-rose-800 ring-rose-200" : "bg-slate-100 text-slate-700 ring-slate-200")">
-                        @(_article.IsDeleted ? "Gelöscht" : "Nicht gelöscht")
-                    </span>
-                </div>
-                <p class="mt-5 text-xs text-slate-500">Zuletzt geändert: @_article.ModifiedAt.ToString(format: "dd.MM.yyyy HH:mm:ss")</p>
+            <p class="text-center text-[11px] text-slate-500">Bildplatzhalter</p>
+          </div>
+          <div>
+            <p class="text-xs font-semibold uppercase tracking-widest text-[#0f766e]">@_article.Label</p>
+            <h2 class="mt-3 text-2xl font-semibold tracking-tight">@_article.Name</h2>
+            <p class="mt-3 max-w-xl text-sm leading-7 text-slate-600">@_article.Description.</p>
+            <div class="mt-5 flex flex-wrap gap-2">
+              <span
+                class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset @(_article.IsOrderable ? "bg-emerald-50 text-emerald-800 ring-emerald-200" : "bg-slate-100 text-slate-700 ring-slate-200")">
+                Bestellbar
+              </span>
+              <span
+                class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset @(_article.IsSearchable ? "bg-emerald-50 text-emerald-800 ring-emerald-200" : "bg-slate-100 text-slate-700 ring-slate-200")">
+                Suchbar
+              </span>
+              <span
+                class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset @(_article.IsFreeShipping ? "bg-emerald-50 text-emerald-800 ring-emerald-200" : "bg-slate-100 text-slate-700 ring-slate-200")">
+                Gratisversand
+              </span>
+              <span
+                class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset @(_article.IsDiscountable ? "bg-emerald-50 text-emerald-800 ring-emerald-200" : "bg-slate-100 text-slate-700 ring-slate-200")">
+                Rabattfähig
+              </span>
+              <span
+                class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset @(_article.IsDiscontinued ? "bg-rose-50 text-rose-800 ring-rose-200" : "bg-slate-100 text-slate-700 ring-slate-200")">
+                Nicht mehr vertrieben
+              </span>
+              <span
+                class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset @(_article.IsDeleted ? "bg-rose-50 text-rose-800 ring-rose-200" : "bg-slate-100 text-slate-700 ring-slate-200")">
+                @(_article.IsDeleted ? "Gelöscht" : "Nicht gelöscht")
+              </span>
             </div>
+            <p class="mt-5 text-xs text-slate-500">Zuletzt geändert: @_article.ModifiedAt.ToString(format: "dd.MM.yyyy HH:mm:ss")</p>
+          </div>
         </div>
-    </section>
-    <section class="min-w-0 rounded-2xl border border-[#e2e8ed] bg-white p-5 shadow-xs sm:p-6">
+      </section>
+      <section class="min-w-0 rounded-2xl border border-[#e2e8ed] bg-white p-5 shadow-xs sm:p-6">
         <div class="mb-5 flex flex-wrap items-center justify-between gap-3">
-            <h2 class="text-base font-semibold tracking-tight">Varianten / SKUs</h2>
+          <h2 class="text-base font-semibold tracking-tight">Varianten / SKUs</h2>
         </div>
         <div class="max-w-full overflow-x-auto rounded-xl border border-[#e2e8ed]">
-            <table class="w-full text-left text-sm">
-                <caption class="sr-only">Alle Beispielvarianten, einschließlich gelöschter SKUs</caption>
-                <thead class="bg-[#f2f6f7] text-[11px] font-semibold uppercase tracking-wider text-slate-500">
-                <tr>
-                    <th class="whitespace-nowrap px-4 py-3">SKU</th>
-                    <th class="whitespace-nowrap px-4 py-3">Farbe</th>
-                    <th class="whitespace-nowrap px-4 py-3">Größe</th>
-                    <th class="whitespace-nowrap px-4 py-3">Form</th>
-                    <th class="whitespace-nowrap px-4 py-3">Lieferantenfarbe</th>
-                    <th class="whitespace-nowrap px-4 py-3">VK</th>
-                    <th class="whitespace-nowrap px-4 py-3">Reduziert</th>
-                    <th class="whitespace-nowrap px-4 py-3">Bestand</th>
-                    <th class="whitespace-nowrap px-4 py-3">Sofort / Bald / Nicht</th>
-                    <th class="whitespace-nowrap px-4 py-3">Führende Farbe</th>
-                    <th class="whitespace-nowrap px-4 py-3">Gelöscht</th>
+          <table class="w-full text-left text-sm">
+            <caption class="sr-only">Alle Beispielvarianten, einschließlich gelöschter SKUs</caption>
+            <thead class="bg-[#f2f6f7] text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+              <tr>
+                <th class="whitespace-nowrap px-4 py-3">SKU</th>
+                <th class="whitespace-nowrap px-4 py-3">Farbe</th>
+                <th class="whitespace-nowrap px-4 py-3">Größe</th>
+                <th class="whitespace-nowrap px-4 py-3">Form</th>
+                <th class="whitespace-nowrap px-4 py-3">Lieferantenfarbe</th>
+                <th class="whitespace-nowrap px-4 py-3">VK</th>
+                <th class="whitespace-nowrap px-4 py-3">Reduziert</th>
+                <th class="whitespace-nowrap px-4 py-3">Bestand</th>
+                <th class="whitespace-nowrap px-4 py-3">Sofort / Bald / Nicht</th>
+                <th class="whitespace-nowrap px-4 py-3">Führende Farbe</th>
+                <th class="whitespace-nowrap px-4 py-3">Gelöscht</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100">
+              @foreach (SkuDto sku in _article.Skus)
+              {
+                <tr class="hover:bg-[#f2f6f7]">
+                  <td class="px-4 py-4 align-top font-medium whitespace-nowrap">
+                    <a class="text-[#0f766e] underline" href="/design-a/sku-detail/@sku.Sku">@sku.Sku</a>
+                  </td>
+                  <td class="px-4 py-4 align-top tabular-nums">@sku.Color.Name</td>
+                  <td class="px-4 py-4 align-top tabular-nums">@sku.Size</td>
+                  <td class="px-4 py-4 align-top tabular-nums">@sku.Fit</td>
+                  <td class="px-4 py-4 align-top tabular-nums">@sku.SupplierColor</td>
+                  <td class="px-4 py-4 align-top tabular-nums">@sku.SalesPrice €</td>
+                  <td class="px-4 py-4 align-top tabular-nums">
+                    @(sku.SalesPriceReduced.HasValue ? sku.SalesPriceReduced.Value : "0") €
+                  </td>
+                  <td class="px-4 py-4 align-top tabular-nums">@sku.Stock</td>
+                  <td class="px-4 py-4 align-top tabular-nums">
+                    @sku.Quantities.AvailableNow / @sku.Quantities.AvailableSoon / @sku.Quantities.NotAvailable
+                  </td>
+                  <td class="px-4 py-4 align-top tabular-nums">
+                    <span
+                      class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset 
+                      @(sku.IsLeadingColor ? "bg-emerald-50 text-emerald-800 ring-emerald-200" : "bg-slate-100 text-slate-700 ring-slate-200")">
+                      @(sku.IsLeadingColor ? "Ja" : "Nein")
+                    </span>
+                  </td>
+                  <td class="px-4 py-4 align-top tabular-nums">
+                    <span
+                      class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset 
+                      @(sku.IsDeleted ? "bg-rose-50 text-rose-800 ring-rose-200" : "bg-slate-100 text-slate-700 ring-slate-200")">
+                      @(sku.IsDeleted ? "Ja" : "Nein")
+                    </span>
+                  </td>
                 </tr>
-                </thead>
-                <tbody class="divide-y divide-slate-100">
-                @foreach (SkuDto sku in _article.Skus)
-                {
-                    <tr class="hover:bg-[#f2f6f7]">
-                        <td class="px-4 py-4 align-top font-medium whitespace-nowrap">
-                            <a class="text-[#0f766e] underline" href="/design-a/sku-detail/@sku.Sku">@sku.Sku</a>
-                        </td>
-                        <td class="px-4 py-4 align-top tabular-nums">@sku.Color.Name</td>
-                        <td class="px-4 py-4 align-top tabular-nums">@sku.Size</td>
-                        <td class="px-4 py-4 align-top tabular-nums">@sku.Fit</td>
-                        <td class="px-4 py-4 align-top tabular-nums">@sku.SupplierColor</td>
-                        <td class="px-4 py-4 align-top tabular-nums">@sku.SalesPrice €</td>
-                        <td class="px-4 py-4 align-top tabular-nums">@sku.SalesPriceReduced €</td>
-                        <td class="px-4 py-4 align-top tabular-nums">@sku.Stock</td>
-                        <td class="px-4 py-4 align-top tabular-nums">
-                            @sku.Quantities.AvailableNow / @sku.Quantities.AvailableSoon / @sku.Quantities.NotAvailable
-                        </td>
-                        <td class="px-4 py-4 align-top tabular-nums">
-                            <span class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset 
-                            @(sku.IsLeadingColor ? "bg-emerald-50 text-emerald-800 ring-emerald-200" : "bg-slate-100 text-slate-700 ring-slate-200")">
-                                @(sku.IsLeadingColor ? "Ja" : "Nein")
-                            </span>
-                        </td>
-                        <td class="px-4 py-4 align-top tabular-nums">
-                            <span class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset 
-                            @(sku.IsDeleted ? "bg-rose-50 text-rose-800 ring-rose-200" : "bg-slate-100 text-slate-700 ring-slate-200")">
-                                @(sku.IsDeleted ? "Ja" : "Nein")
-                            </span>
-                        </td>
-                    </tr>
-                }
-                </tbody>
-            </table>
+              }
+            </tbody>
+          </table>
         </div>
-        <p class="mt-4 text-xs text-slate-500">Bestand: alle Filialen · Geändert: 28.10.2026, 14:03:11 UTC</p>
-    </section>
-    <div class="grid gap-6 xl:grid-cols-2">
-    <section class="min-w-0 rounded-2xl border border-[#e2e8ed] bg-white p-5 shadow-xs sm:p-6">
-        <div class="mb-5 flex flex-wrap items-center justify-between gap-3">
+        <p class="mt-4 text-xs text-slate-500">
+          Bestand: alle Filialen · Geändert: @_article.ModifiedAt.ToString(format: "dd.MM.yyyy HH:mm:ss") UTC
+        </p>
+      </section>
+      <div class="grid gap-6 xl:grid-cols-2">
+        <section class="min-w-0 rounded-2xl border border-[#e2e8ed] bg-white p-5 shadow-xs sm:p-6">
+          <div class="mb-5 flex flex-wrap items-center justify-between gap-3">
             <h2 class="text-base font-semibold tracking-tight">Allgemeine Angaben</h2>
-        </div>
-        <dl class="grid grid-cols-1 gap-x-8 gap-y-5 sm:grid-cols-2">
+          </div>
+          <dl class="grid grid-cols-1 gap-x-8 gap-y-5 sm:grid-cols-2">
             <div>
-                <dt class="text-xs font-medium text-slate-500">Hersteller</dt>
-                <dd class="mt-1.5 wrap-break-word text-sm font-medium">@_article.Manufacturer</dd>
+              <dt class="text-xs font-medium text-slate-500">Hersteller</dt>
+              <dd class="mt-1.5 wrap-break-word text-sm font-medium">@_article.Manufacturer</dd>
             </div>
             <div>
-                <dt class="text-xs font-medium text-slate-500">Marke / Kollektion</dt>
-                <dd class="mt-1.5 wrap-break-word text-sm font-medium">@_article.Label</dd>
+              <dt class="text-xs font-medium text-slate-500">Marke / Kollektion</dt>
+              <dd class="mt-1.5 wrap-break-word text-sm font-medium">@_article.Label</dd>
             </div>
             <div>
-                <dt class="text-xs font-medium text-slate-500">Herstellerseite</dt>
-                <dd class="mt-1.5 wrap-break-word text-sm font-medium">
-                    <a class="text-[#0f766e] underline" href="@_article.ManufacturerUrl" target="_blank" rel="noreferrer">Zum Hersteller Webshop</a>
-                </dd>
+              <dt class="text-xs font-medium text-slate-500">Herstellerseite</dt>
+              <dd class="mt-1.5 wrap-break-word text-sm font-medium">
+                <a class="text-[#0f766e] underline" href=@(@_article.ManufacturerUrl == null ? "#" :
+                   @_article.ManufacturerUrl) target="_blank" rel="noreferrer">
+                  @_article.ManufacturerUrlText
+                </a>
+              </dd>
             </div>
             <div>
-                <dt class="text-xs font-medium text-slate-500">Gültig von / bis</dt>
-                <dd class="mt-1.5 wrap-break-word text-sm font-medium">@_article.ValidFrom / @(_article.ValidTo == null ? "unbegrenzt" : _article.ValidTo)</dd>
+              <dt class="text-xs font-medium text-slate-500">Gültig von / bis</dt>
+              <dd class="mt-1.5 wrap-break-word text-sm font-medium">
+                @_article.ValidFrom / @(_article.ValidTo == null ? "unbegrenzt" : _article.ValidTo)
+              </dd>
             </div>
             <div>
-                <dt class="text-xs font-medium text-slate-500">Lieferzeit</dt>
-                <dd class="mt-1.5 wrap-break-word text-sm font-medium">
-                    @_article.DeliveryTime.Text · min. @_article.DeliveryTime.MinDays · max. @_article.DeliveryTime.MaxDays
-                </dd>
+              <dt class="text-xs font-medium text-slate-500">Lieferzeit</dt>
+              <dd class="mt-1.5 wrap-break-word text-sm font-medium">
+                @_article.DeliveryTime.Text · min. @_article.DeliveryTime.MinDays · max. @_article.DeliveryTime.MaxDays
+              </dd>
             </div>
             <div>
-                <dt class="text-xs font-medium text-slate-500">Versandmaße</dt>
-                <dd class="mt-1.5 wrap-break-word text-sm font-medium">
-                    @_article.ShippingDimensions.LengthCm × @_article.ShippingDimensions.WidthCm × @_article.ShippingDimensions.HeightCm cm
-                </dd>
+              <dt class="text-xs font-medium text-slate-500">Versandmaße</dt>
+              <dd class="mt-1.5 wrap-break-word text-sm font-medium">
+                @_article.ShippingDimensions.LengthCm × @_article.ShippingDimensions.WidthCm ×
+                @_article.ShippingDimensions.HeightCm cm
+              </dd>
             </div>
             <div>
-                <dt class="text-xs font-medium text-slate-500">Gewicht</dt>
-                <dd class="mt-1.5 wrap-break-word text-sm font-medium">@_article.ShippingDimensions.WeightKg kg</dd>
+              <dt class="text-xs font-medium text-slate-500">Gewicht</dt>
+              <dd class="mt-1.5 wrap-break-word text-sm font-medium">@_article.ShippingDimensions.WeightKg kg</dd>
             </div>
             <div>
-                <dt class="text-xs font-medium text-slate-500">Kategorien</dt>
-                <dd class="flex flex-col mt-1.5 wrap-break-word text-sm font-medium">
-                    @foreach (ArticleCategoryDto category in _article.Categories)
-                    {
-                        <p class="text-[#0f766e] underline">
-                            @category.Number · @_categories?.FirstOrDefault(c => c.Number == category.Number)?.Name
-                        </p>
-                    }
-
-                </dd>
-            </div>
-        </dl>
-    </section>
-    <section class="min-w-0 rounded-2xl border border-[#e2e8ed] bg-white p-5 shadow-xs sm:p-6">
-        <div class="mb-5 flex flex-wrap items-center justify-between gap-3">
-            <h2 class="text-base font-semibold tracking-tight">Artikeleigenschaften</h2>
-        </div>
-        <dl class="grid grid-cols-1 gap-x-8 gap-y-5 sm:grid-cols-2">
-            <div>
-                <dt class="text-xs font-medium text-slate-500">Suchbar</dt>
-                <dd class="mt-1.5 wrap-break-word text-sm font-medium">
-                    <span class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset 
-                    @(_article.IsSearchable ? "bg-emerald-50 text-emerald-800 ring-emerald-200" : "bg-slate-100 text-slate-700 ring-slate-200")">
-                        @(_article.IsSearchable ? "Ja" : "Nein")
-                    </span>
-                </dd>
-            </div>
-            <div>
-                <dt class="text-xs font-medium text-slate-500">Bestellbar</dt>
-                <dd class="mt-1.5 wrap-break-word text-sm font-medium">
-                    <span class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset 
-                    @(_article.IsOrderable ? "bg-emerald-50 text-emerald-800 ring-emerald-200" : "bg-slate-100 text-slate-700 ring-slate-200")">
-                        @(_article.IsOrderable ? "Ja" : "Nein")
-                    </span>
-                </dd>
-            </div>
-            <div>
-                <dt class="text-xs font-medium text-slate-500">Rabattfähig</dt>
-                <dd class="mt-1.5 wrap-break-word text-sm font-medium">
-                    <span class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset 
-                    @(_article.IsDiscountable ? "bg-emerald-50 text-emerald-800 ring-emerald-200" : "bg-slate-100 text-slate-700 ring-slate-200")">
-                        @(_article.IsDiscountable ? "Ja" : "Nein")
-                    </span>
-                </dd>
-            </div>
-            <div>
-                <dt class="text-xs font-medium text-slate-500">Auslaufartikel</dt>
-                <dd class="mt-1.5 wrap-break-word text-sm font-medium">
-                    <span class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset 
-                    @(_article.IsDiscontinued ? "bg-rose-50 text-rose-800 ring-rose-200" : "bg-slate-100 text-slate-700 ring-slate-200")">
-                        @(_article.IsDiscontinued ? "Ja" : "Nein")
-                    </span>
-                </dd>
-            </div>
-            <div>
-                <dt class="text-xs font-medium text-slate-500">Versandkostenfrei</dt>
-                <dd class="mt-1.5 wrap-break-word text-sm font-medium">
-                    <span class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset 
-                    @(_article.IsFreeShipping ? "bg-emerald-50 text-emerald-800 ring-emerald-200" : "bg-slate-100 text-slate-700 ring-slate-200")">
-                        @(_article.IsFreeShipping ? "Ja" : "Nein")
-                    </span>
-                </dd>
-            </div>
-            <div>
-                <dt class="text-xs font-medium text-slate-500">Gelöscht</dt>
-                <dd class="mt-1.5 wrap-break-word text-sm font-medium">
-                    <span class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset 
-                    @(_article.IsDeleted ? "bg-rose-50 text-rose-800 ring-rose-200" : "bg-slate-100 text-slate-700 ring-slate-200")">
-                        @(_article.IsDeleted ? "Ja" : "Nein")
-                    </span>
-                </dd>
-            </div>
-        </dl>
-    </section>
-    <section class="min-w-0 rounded-2xl border border-[#e2e8ed] bg-white p-5 shadow-xs sm:p-6">
-        <div class="mb-5 flex flex-wrap items-center justify-between gap-3">
-            <h2 class="text-base font-semibold tracking-tight">Texte nach Typ</h2>
-        </div>
-
-        @foreach (var group in _texts)
-        {
-            <div class="mb-5 last:mb-0">
-                <h3 class="text-xs font-semibold uppercase tracking-wider text-slate-500">@group.Key</h3>
-                @foreach (var item in group.OrderBy(text => text.SortOrder))
+              <dt class="text-xs font-medium text-slate-500">Kategorien</dt>
+              <dd class="flex flex-col mt-1.5 wrap-break-word text-sm font-medium">
+                @foreach (ArticleCategoryDto category in _article.Categories)
                 {
-                    <p class="mt-2 text-sm leading-7">@($"{item.SortOrder}-> {item.Text}")</p>
+                  <p class="text-[#0f766e] underline">
+                    @category.Number · @_categories?.FirstOrDefault(c => c.Number == category.Number)?.Name
+                  </p>
                 }
+
+              </dd>
             </div>
-        }
-    </section>
-    <section class="min-w-0 rounded-2xl border border-[#e2e8ed] bg-white p-5 shadow-xs sm:p-6">
-        <div class="mb-5 flex flex-wrap items-center justify-between gap-3">
+          </dl>
+        </section>
+        <section class="min-w-0 rounded-2xl border border-[#e2e8ed] bg-white p-5 shadow-xs sm:p-6">
+          <div class="mb-5 flex flex-wrap items-center justify-between gap-3">
+            <h2 class="text-base font-semibold tracking-tight">Artikeleigenschaften</h2>
+          </div>
+          <dl class="grid grid-cols-1 gap-x-8 gap-y-5 sm:grid-cols-2">
+            <div>
+              <dt class="text-xs font-medium text-slate-500">Suchbar</dt>
+              <dd class="mt-1.5 wrap-break-word text-sm font-medium">
+                <span
+                  class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset 
+                  @(_article.IsSearchable ? "bg-emerald-50 text-emerald-800 ring-emerald-200" : "bg-slate-100 text-slate-700 ring-slate-200")">
+                  @(_article.IsSearchable ? "Ja" : "Nein")
+                </span>
+              </dd>
+            </div>
+            <div>
+              <dt class="text-xs font-medium text-slate-500">Bestellbar</dt>
+              <dd class="mt-1.5 wrap-break-word text-sm font-medium">
+                <span
+                  class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset 
+                  @(_article.IsOrderable ? "bg-emerald-50 text-emerald-800 ring-emerald-200" : "bg-slate-100 text-slate-700 ring-slate-200")">
+                  @(_article.IsOrderable ? "Ja" : "Nein")
+                </span>
+              </dd>
+            </div>
+            <div>
+              <dt class="text-xs font-medium text-slate-500">Rabattfähig</dt>
+              <dd class="mt-1.5 wrap-break-word text-sm font-medium">
+                <span
+                  class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset 
+                  @(_article.IsDiscountable ? "bg-emerald-50 text-emerald-800 ring-emerald-200" : "bg-slate-100 text-slate-700 ring-slate-200")">
+                  @(_article.IsDiscountable ? "Ja" : "Nein")
+                </span>
+              </dd>
+            </div>
+            <div>
+              <dt class="text-xs font-medium text-slate-500">Auslaufartikel</dt>
+              <dd class="mt-1.5 wrap-break-word text-sm font-medium">
+                <span
+                  class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset 
+                  @(_article.IsDiscontinued ? "bg-rose-50 text-rose-800 ring-rose-200" : "bg-slate-100 text-slate-700 ring-slate-200")">
+                  @(_article.IsDiscontinued ? "Ja" : "Nein")
+                </span>
+              </dd>
+            </div>
+            <div>
+              <dt class="text-xs font-medium text-slate-500">Versandkostenfrei</dt>
+              <dd class="mt-1.5 wrap-break-word text-sm font-medium">
+                <span
+                  class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset 
+                  @(_article.IsFreeShipping ? "bg-emerald-50 text-emerald-800 ring-emerald-200" : "bg-slate-100 text-slate-700 ring-slate-200")">
+                  @(_article.IsFreeShipping ? "Ja" : "Nein")
+                </span>
+              </dd>
+            </div>
+            <div>
+              <dt class="text-xs font-medium text-slate-500">Gelöscht</dt>
+              <dd class="mt-1.5 wrap-break-word text-sm font-medium">
+                <span
+                  class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset 
+                  @(_article.IsDeleted ? "bg-rose-50 text-rose-800 ring-rose-200" : "bg-slate-100 text-slate-700 ring-slate-200")">
+                  @(_article.IsDeleted ? "Ja" : "Nein")
+                </span>
+              </dd>
+            </div>
+          </dl>
+        </section>
+        <section class="min-w-0 rounded-2xl border border-[#e2e8ed] bg-white p-5 shadow-xs sm:p-6">
+          <div class="mb-5 flex flex-wrap items-center justify-between gap-3">
+            <h2 class="text-base font-semibold tracking-tight">Texte nach Typ</h2>
+          </div>
+
+          @foreach (var group in _texts)
+          {
+            <div class="mb-5 last:mb-0">
+              <h3 class="text-xs font-semibold uppercase tracking-wider text-slate-500">@group.Key</h3>
+              @foreach (var item in group.OrderBy(text => text.SortOrder))
+              {
+                <p class="mt-2 text-sm leading-7">@($"{item.SortOrder}-> {item.Text}")</p>
+              }
+            </div>
+          }
+        </section>
+        <section class="min-w-0 rounded-2xl border border-[#e2e8ed] bg-white p-5 shadow-xs sm:p-6">
+          <div class="mb-5 flex flex-wrap items-center justify-between gap-3">
             <h2 class="text-base font-semibold tracking-tight">Material &amp; Maße</h2>
-        </div>
-        <div class="max-w-full overflow-x-auto rounded-xl border border-[#e2e8ed]">
+          </div>
+          <div class="max-w-full overflow-x-auto rounded-xl border border-[#e2e8ed]">
             <table class="w-full text-left text-sm">
-                <caption class="sr-only">Materialzusammensetzung</caption>
-                <thead class="bg-[#f2f6f7] text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+              <caption class="sr-only">Materialzusammensetzung</caption>
+              <thead class="bg-[#f2f6f7] text-[11px] font-semibold uppercase tracking-wider text-slate-500">
                 <tr>
-                    <th class="whitespace-nowrap px-4 py-3">Materialart</th>
-                    <th class="whitespace-nowrap px-4 py-3">Material</th>
-                    <th class="whitespace-nowrap px-4 py-3">Anteil</th>
+                  <th class="whitespace-nowrap px-4 py-3">Materialart</th>
+                  <th class="whitespace-nowrap px-4 py-3">Material</th>
+                  <th class="whitespace-nowrap px-4 py-3">Anteil</th>
                 </tr>
-                </thead>
-                <tbody class="divide-y divide-slate-100">
+              </thead>
+              <tbody class="divide-y divide-slate-100">
                 @foreach (var material in _article.MaterialComposition)
                 {
-                    <tr class="hover:bg-[#f2f6f7]">
-                        <td class="px-4 py-4 align-top font-medium whitespace-nowrap">@material.MaterialType</td>
-                        <td class="px-4 py-4 align-top tabular-nums">@material.Material</td>
-                        <td class="px-4 py-4 align-top tabular-nums">@material.Percentage %</td>
-                    </tr>
+                  <tr class="hover:bg-[#f2f6f7]">
+                    <td class="px-4 py-4 align-top font-medium whitespace-nowrap">@material.MaterialType</td>
+                    <td class="px-4 py-4 align-top tabular-nums">@material.Material</td>
+                    <td class="px-4 py-4 align-top tabular-nums">@material.Percentage %</td>
+                  </tr>
                 }
-                </tbody>
+              </tbody>
             </table>
-        </div>
-        <h3 class="mb-3 mt-6 text-sm font-semibold">Maßtabelle</h3>
-        <div class="max-w-full overflow-x-auto rounded-xl border border-[#e2e8ed]">
+          </div>
+          <h3 class="mb-3 mt-6 text-sm font-semibold">Maßtabelle</h3>
+          <div class="max-w-full overflow-x-auto rounded-xl border border-[#e2e8ed]">
             <table class="w-full text-left text-sm">
-                <caption class="sr-only">Artikelmaßtabelle</caption>
-                <thead class="bg-[#f2f6f7] text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+              <caption class="sr-only">Artikelmaßtabelle</caption>
+              <thead class="bg-[#f2f6f7] text-[11px] font-semibold uppercase tracking-wider text-slate-500">
                 <tr>
-                    <th class="whitespace-nowrap px-4 py-3">Größe</th>
-                    <th class="whitespace-nowrap px-4 py-3">Messung</th>
-                    <th class="whitespace-nowrap px-4 py-3">Wert</th>
+                  <th class="whitespace-nowrap px-4 py-3">Größe</th>
+                  <th class="whitespace-nowrap px-4 py-3">Messung</th>
+                  <th class="whitespace-nowrap px-4 py-3">Wert</th>
                 </tr>
-                </thead>
-                <tbody class="divide-y divide-slate-100">
+              </thead>
+              <tbody class="divide-y divide-slate-100">
                 @foreach (var size in _article.SizeChart)
                 {
-                    <tr class="hover:bg-[#f2f6f7]">
-                        <td class="px-4 py-4 align-top font-medium whitespace-nowrap">@size.Size</td>
-                        <td class="px-4 py-4 align-top tabular-nums">@size.Name</td>
-                        <td class="px-4 py-4 align-top tabular-nums">@size.Value @size.Unit</td>
-                    </tr>
+                  <tr class="hover:bg-[#f2f6f7]">
+                    <td class="px-4 py-4 align-top font-medium whitespace-nowrap">@size.Size</td>
+                    <td class="px-4 py-4 align-top tabular-nums">@size.Name</td>
+                    <td class="px-4 py-4 align-top tabular-nums">@size.Value @size.Unit</td>
+                  </tr>
                 }
-                </tbody>
+              </tbody>
             </table>
-        </div>
-    </section>
-    <section class="min-w-0 rounded-2xl border border-[#e2e8ed] bg-white p-5 shadow-xs sm:p-6">
-        <div class="mb-5 flex flex-wrap items-center justify-between gap-3">
+          </div>
+        </section>
+        <section class="min-w-0 rounded-2xl border border-[#e2e8ed] bg-white p-5 shadow-xs sm:p-6">
+          <div class="mb-5 flex flex-wrap items-center justify-between gap-3">
             <h2 class="text-base font-semibold tracking-tight">Bilddateien</h2>
-        </div>
-        <div class="max-w-full overflow-x-auto rounded-xl border border-[#e2e8ed]">
+          </div>
+          <div class="max-w-full overflow-x-auto rounded-xl border border-[#e2e8ed]">
             <table class="w-full text-left text-sm">
-                <caption class="sr-only">Dateinamen und Metadaten der Artikelbilder</caption>
-                <thead class="bg-[#f2f6f7] text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+              <caption class="sr-only">Dateinamen und Metadaten der Artikelbilder</caption>
+              <thead class="bg-[#f2f6f7] text-[11px] font-semibold uppercase tracking-wider text-slate-500">
                 <tr>
-                    <th class="whitespace-nowrap px-4 py-3">Dateiname</th>
-                    <th class="whitespace-nowrap px-4 py-3">Typ</th>
-                    <th class="whitespace-nowrap px-4 py-3">Farb-ID</th>
-                    <th class="whitespace-nowrap px-4 py-3">Rang</th>
-                    <th class="whitespace-nowrap px-4 py-3">Gelöscht</th>
+                  <th class="whitespace-nowrap px-4 py-3">Dateiname</th>
+                  <th class="whitespace-nowrap px-4 py-3">Typ</th>
+                  <th class="whitespace-nowrap px-4 py-3">Farb-ID</th>
+                  <th class="whitespace-nowrap px-4 py-3">Rang</th>
+                  <th class="whitespace-nowrap px-4 py-3">Gelöscht</th>
                 </tr>
-                </thead>
-                <tbody class="divide-y divide-slate-100">
+              </thead>
+              <tbody class="divide-y divide-slate-100">
 
                 @foreach (var image in _article.Images)
                 {
-                    <tr class="hover:bg-[#f2f6f7]">
-                        <td class="px-4 py-4 align-top font-medium whitespace-nowrap">@image.FileName</td>
-                        <td class="px-4 py-4 align-top tabular-nums">@image.Type</td>
-                        <td class="px-4 py-4 align-top tabular-nums">@image.ColorId</td>
-                        <td class="px-4 py-4 align-top tabular-nums">@image.SortOrder</td>
-                        <td class="px-4 py-4 align-top tabular-nums">
-                            <span class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset 
-                            @(image.IsDeleted ? "bg-rose-50 text-rose-800 ring-rose-200" : "bg-slate-100 text-slate-700 ring-slate-200")">
-                                @(image.IsDeleted ? "Ja" : "Nein")
-                            </span>
-                        </td>
-                    </tr>
+                  <tr class="hover:bg-[#f2f6f7]">
+                    <td class="px-4 py-4 align-top font-medium whitespace-nowrap">@image.FileName</td>
+                    <td class="px-4 py-4 align-top tabular-nums">@image.Type</td>
+                    <td class="px-4 py-4 align-top tabular-nums">@image.ColorId</td>
+                    <td class="px-4 py-4 align-top tabular-nums">@image.SortOrder</td>
+                    <td class="px-4 py-4 align-top tabular-nums">
+                      <span
+                        class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset 
+                        @(image.IsDeleted ? "bg-rose-50 text-rose-800 ring-rose-200" : "bg-slate-100 text-slate-700 ring-slate-200")">
+                        @(image.IsDeleted ? "Ja" : "Nein")
+                      </span>
+                    </td>
+                  </tr>
                 }
 
-                </tbody>
+              </tbody>
             </table>
-        </div>
-    </section>
-    <section class="min-w-0 rounded-2xl border border-[#e2e8ed] bg-white p-5 shadow-xs sm:p-6">
-        <div class="mb-5 flex flex-wrap items-center justify-between gap-3">
+          </div>
+        </section>
+        <section class="min-w-0 rounded-2xl border border-[#e2e8ed] bg-white p-5 shadow-xs sm:p-6">
+          <div class="mb-5 flex flex-wrap items-center justify-between gap-3">
             <h2 class="text-base font-semibold tracking-tight">Merkmale &amp; Beziehungen</h2>
-        </div>
-        <dl class="grid grid-cols-1 gap-x-8 gap-y-5 sm:grid-cols-2">
+          </div>
+          <dl class="grid grid-cols-1 gap-x-8 gap-y-5 sm:grid-cols-2">
             @foreach (var x in _article.Attributes)
             {
-                <div>
-                    <dt class="text-xs font-medium text-slate-500">@x.AttributeTypeName · Typ @x.AttributeType / Merkmal @x.Number</dt>
-                    <dd class="mt-1.5 wrap-break-word text-sm font-medium">@x.Name</dd>
-                </div>
+              <div>
+                <dt class="text-xs font-medium text-slate-500">
+                  @x.AttributeTypeName · Typ @x.AttributeType / Merkmal
+                  @x.Number
+                </dt>
+                <dd class="mt-1.5 wrap-break-word text-sm font-medium">@x.Name</dd>
+              </div>
             }
             <div>
-                <dt class="text-xs font-medium text-slate-500">Verwandter Artikel</dt>
-                <dd class="mt-1.5 wrap-break-word text-sm font-medium">
-                    @foreach (var x in _relateds)
-                    {
-                        <a class="text-[#0f766e] underline" href="/design-a/article-detail/@x">@x · related</a>
-                    }
+              <dt class="text-xs font-medium text-slate-500">Verwandter Artikel</dt>
+              <dd class="mt-1.5 wrap-break-word text-sm font-medium">
+                @foreach (var x in _relateds)
+                {
+                  <a class="text-[#0f766e] underline" href="/design-a/article-detail/@x">@x · related</a>
+                }
 
-                </dd>
+              </dd>
             </div>
             <div>
-                <dt class="text-xs font-medium text-slate-500">Zubehör</dt>
-                <dd class="mt-1.5 wrap-break-word text-sm font-medium">
-                    @foreach (var x in _accessories)
-                    {
-                        <a class="text-[#0f766e] underline" href="/design-a/article-detail/@x">@x · accessory</a>
-                    }
-                </dd>
+              <dt class="text-xs font-medium text-slate-500">Zubehör</dt>
+              <dd class="mt-1.5 wrap-break-word text-sm font-medium">
+                @foreach (var x in _accessories)
+                {
+                  <a class="text-[#0f766e] underline" href="/design-a/article-detail/@x">@x · accessory</a>
+                }
+              </dd>
             </div>
-        </dl>
-    </section>
+          </dl>
+        </section>
+      </div>
     </div>
-    </div>
-}
+  }
 
 </main>
