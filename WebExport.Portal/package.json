@@ -5,6 +5,6 @@
     "tailwindcss": "^4.3.5"
   },
   "scripts": {
-    "css": "npx @tailwindcss/cli -i -i wwwroot/i.css -o wwwroot/o.css"
+    "css": "tailwindcss -i wwwroot/i.css -o wwwroot/o.css"
   }
 }

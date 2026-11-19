@@ -7,8 +7,12 @@ var builder = WebAssemblyHostBuilder.CreateDefault(args);
 builder.RootComponents.Add<App>("#app");
 builder.RootComponents.Add<HeadOutlet>("head::after");
 
-// builder.Services.AddScoped(_ => new HttpClient { BaseAddress = new Uri("http://localhost:3000/") });
-builder.Services.AddScoped(_ => new HttpClient { BaseAddress = new Uri("https://webexport.onrender.com/") });
+builder.Services.AddScoped(sp =>
+{
+    var config = sp.GetRequiredService<IConfiguration>();
+    var BaseAddress = config["ApiUrl"] ?? "http://localhost:3000/";
+    return new HttpClient { BaseAddress = new Uri(BaseAddress) };
+});
 
 builder.Services.AddSonner();
 

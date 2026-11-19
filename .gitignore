@@ -40,6 +40,11 @@ dist/
 # Keep quark-tailwind.min.css because wwwroot/index.html loads it.
 /BlazorApp/wwwroot/css/quark-tailwind.css
 
+# Portal configuration and generated stylesheet
+/WebExport.Portal/wwwroot/appsettings.json
+/WebExport.Portal/wwwroot/appsettings.Production.json
+/WebExport.Portal/wwwroot/o.css
+
 # Local backend configuration and credentials
 /WebExportAPI/appsettings*.json
 !/WebExportAPI/appsettings.example.json
