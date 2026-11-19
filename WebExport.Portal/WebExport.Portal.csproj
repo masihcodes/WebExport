@@ -17,13 +17,8 @@
     <ProjectReference Include="..\Models\Models.csproj" />
   </ItemGroup>
 
-  <Target Name="BuildTailwindCSS" BeforeTargets="ResolveProjectStaticWebAssets" Condition="'$(DesignTimeBuild)' != 'true'">
-    <Message Text="Building Tailwind CSS..." Importance="high" />
-    <Exec Command="npm run css" WorkingDirectory="$(MSBuildProjectDirectory)" />
-    <ItemGroup>
-      <Content Remove="wwwroot/o.css" />
-      <Content Include="wwwroot/o.css" />
-    </ItemGroup>
+  <Target Name="BuildTailwindCSS" BeforeTargets="ResolveProjectStaticWebAssets">
+    <Exec Command="npm run css"/>
   </Target>
 
 </Project>
