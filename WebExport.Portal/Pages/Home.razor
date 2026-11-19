@@ -1,0 +1,73 @@
+@page "/"
+@inject Session Session
+
+
+
+@code {
+    private static readonly (string Icon, string Title, string Description)[] Features =
+    [
+        ("package-search", "Artikel & Varianten", "Sortiment durchsuchen und Details bis zur einzelnen SKU öffnen."),
+        ("tags", "Preise & Verfügbarkeit", "Verkaufspreise, Reduzierungen und Lieferstatus je Variante einsehen."),
+        ("store", "Bestände je Filiale", "Stückzahlen nach Standort filtern und im Dashboard vergleichen.")
+    ];
+}
+
+
+
+<PageTitle>WebExport · Datenportal</PageTitle>
+
+<div class="w-full min-w-0 space-y-4">
+    <section class="card overflow-hidden border border-base-content/10 bg-base-100/30 shadow backdrop-blur-xs mb-10">
+        <div class="grid lg:grid-cols-[1.05fr_1fr]">
+            <div class="card-body items-start justify-center gap-6 p-6 sm:p-10 lg:p-12 xl:p-14">
+                <div class="space-y-5">
+                    <h1
+                        class="text-4xl font-semibold leading-[1.08] tracking-tight focus:outline-none sm:text-6xl xl:text-7xl">
+                        Ein Portal für<br />
+                        <span class="text-rotate text-7xl duration-4500">
+                            <span class="justify-items-start">
+                                <span class="font-bold italic px-2">Artikel.</span>
+                                <span class="font-bold italic px-2">Preise.</span>
+                                <span class="font-bold italic px-2">Bestände.</span>
+                                <span class="font-bold italic px-2">Ihr Sortiment.</span>
+                            </span>
+                        </span>
+                    </h1>
+                    <p class="max-w-md text-base leading-relaxed text-base-content/75 sm:text-lg">
+                        Von der Artikelvariante bis zum Filialbestand. Entdecken Sie die Daten Ihres Mandanten an einem
+                        Ort.
+                    </p>
+                </div>
+                <div class="w-fit aura-xl aura aura-glow duration-100">
+                    <a href="@(Session.IsAuthenticated ? "/dashboard" : "/login")" class="btn btn-primary btn-lg">
+                        @(Session.IsAuthenticated ? "Zum Dashboard" : "Zum Login")
+                        <LucideIcon Name="arrow-right" Size="19" />
+                    </a>
+                </div>
+            </div>
+            <figure
+                class="relative min-h-52 overflow-hidden border-t border-base-content/10 sm:min-h-64 lg:border-s lg:border-t-0">
+                <img src="2.webp" width="1448" height="1086"
+                     class="absolute inset-0 h-full w-full object-cover object-[60%_50%] transition-transform duration-700 hover:scale-115" />
+            </figure>
+        </div>
+    </section>
+
+    <section class="grid gap-4 sm:grid-cols-3">
+        @foreach (var (icon, title, description) in Features)
+        {
+            <article class="card border border-base-content/10 bg-base-100/50 shadow backdrop-blur-xs">
+                <div class="card-body gap-3 p-5 lg:flex-row lg:items-start">
+                    <span class="grid size-10 shrink-0 place-items-center rounded-field bg-secondary/15 text-base-content">
+                        <LucideIcon Name="@icon" Size="20" />
+                    </span>
+                    <div class="min-w-0">
+                        <h2 class="font-semibold tracking-tight">@title</h2>
+                        <p class="mt-1 text-sm leading-relaxed text-base-content/75">@description</p>
+                    </div>
+                </div>
+            </article>
+        }
+    </section>
+</div>
+

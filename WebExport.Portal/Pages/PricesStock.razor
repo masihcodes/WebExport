@@ -1,0 +1,284 @@
+@page "/prices-stock"
+@layout PortalLayout
+
+@inject HttpClient Http
+@inject NavigationManager Navi
+@inject Session Session
+
+@inject ToastService Toast
+
+
+@code
+{
+    private static readonly JsonSerializerOptions ApiJsonOptions = new JsonSerializerOptions(JsonSerializerDefaults.Web)
+    {
+        Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase) }
+    };
+
+    private PricesStockListQueryDto _query = new PricesStockListQueryDto()
+    {
+        Page = 1,
+        PageSize = 25,
+        ArticleNumber = null,
+        Branch = null,
+        ModifiedSince = null,
+        IncludeDeleted = false
+    };
+
+    private PagedResponseDto<PricesStockResponseDto>? _pricesStock;
+    private BranchResponseDto[]? _branches;
+
+    private bool _isLoading;
+    private string? _pricesStockError;
+    private string? _branchesError;
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!Session.IsAuthenticated || string.IsNullOrWhiteSpace(Session.ApiKey))
+        {
+            Session.Clear();
+            Navi.NavigateTo(uri: "/login");
+            return;
+        }
+
+        await Task.WhenAll(LoadPricesStockAsync(), LoadBranchesAsync());
+    }
+
+    private async Task LoadPricesStockAsync()
+    {
+        if (_isLoading) return;
+
+        _isLoading = true;
+        _pricesStockError = "";
+        _pricesStock = null;
+        try
+        {
+            List<string> query = new List<string>
+            {
+                $"page={_query.Page}",
+                $"pageSize={_query.PageSize}",
+                $"includeDeleted={_query.IncludeDeleted.ToString().ToLower()}"
+            };
+
+            if (!string.IsNullOrWhiteSpace(_query.ArticleNumber))
+                query.Add(item: $"articleNumber={Uri.EscapeDataString(_query.ArticleNumber.Trim())}");
+
+            if (_query.Branch is not null)
+                query.Add(item: $"branch={_query.Branch}");
+
+            if (_query.ModifiedSince is not null)
+            {
+                string isoDate = _query.ModifiedSince.Value.ToString(format: "o");
+                query.Add($"modifiedSince={Uri.EscapeDataString(isoDate)}");
+            }
+
+            string requestUri = $"/api/v1/prices-stock?{string.Join(separator: "&", query)}";
+
+            using HttpRequestMessage req = new HttpRequestMessage(HttpMethod.Get, requestUri);
+
+            req.Headers.Add(name: "X-API-KEY", Session?.ApiKey);
+            req.Headers.Authorization = new AuthenticationHeaderValue(scheme: "Bearer", Session?.Current?.AccessToken);
+
+            using HttpResponseMessage res = await Http.SendAsync(req);
+
+            if (res.StatusCode == HttpStatusCode.Unauthorized)
+            {
+                Session?.Clear();
+                Navi.NavigateTo("/login");
+                return;
+            }
+
+            if (!res.IsSuccessStatusCode)
+            {
+                ErrorResponseDto? apiErr = await res.Content.ReadFromJsonAsync<ErrorResponseDto>();
+                _pricesStockError = apiErr?.Message ?? "Die Anfrage ist fehlgeschlagen.";
+                Toast.Error(_pricesStockError);
+                return;
+            }
+
+            _pricesStock = await res.Content.ReadFromJsonAsync<PagedResponseDto<PricesStockResponseDto>>(ApiJsonOptions);
+        }
+        catch (Exception)
+        {
+            _pricesStockError = "Die API konnte nicht erreicht werden.";
+            Toast.Error(_pricesStockError);
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task LoadBranchesAsync()
+    {
+        _branchesError = "";
+        try
+        {
+            using HttpRequestMessage req = new HttpRequestMessage(HttpMethod.Get, requestUri: "api/v1/branches");
+            req.Headers.Add(name: "X-API-KEY", Session?.ApiKey);
+            req.Headers.Authorization = new AuthenticationHeaderValue(scheme: "Bearer", Session?.Current?.AccessToken);
+
+            using HttpResponseMessage res = await Http.SendAsync(req);
+
+            if (res.StatusCode == HttpStatusCode.Unauthorized)
+            {
+                Session?.Clear();
+                Navi.NavigateTo("/login");
+                return;
+            }
+
+            if (!res.IsSuccessStatusCode)
+            {
+                ErrorResponseDto? apiErr = await res.Content.ReadFromJsonAsync<ErrorResponseDto>();
+                _branchesError = apiErr?.Message ?? "Die Anfrage ist fehlgeschlagen.";
+                Toast.Error(_branchesError);
+                return;
+            }
+
+            _branches = await res.Content.ReadFromJsonAsync<BranchResponseDto[]>();
+        }
+        catch (HttpRequestException)
+        {
+            _branchesError = "Die API konnte nicht erreicht werden.";
+            Toast.Error(_branchesError);
+        }
+        catch (OperationCanceledException)
+        {
+            _branchesError = "Die Anfrage wurde abgebrochen oder hat zu lange gedauert.";
+            Toast.Error(_branchesError);
+        }
+        catch (Exception)
+        {
+            _branchesError = "Bei der Verarbeitung der Anfrage ist ein unerwarteter Fehler aufgetreten.";
+            Toast.Error(_branchesError);
+        }
+    }
+
+    private Task HandleSubmit()
+    {
+        _query.Page = 1;
+        return LoadPricesStockAsync();
+    }
+
+    private async Task NextPageAsync()
+    {
+        if (_isLoading) return;
+        if (_pricesStock != null && _query.Page < _pricesStock.TotalPages)
+        {
+            _query.Page++;
+            await LoadPricesStockAsync();
+        }
+    }
+
+    private async Task PreviousPageAsync()
+    {
+        if (_isLoading) return;
+        if (_query.Page > 1)
+        {
+            _query.Page--;
+            await LoadPricesStockAsync();
+        }
+    }
+
+    private int FirstEntry => _pricesStock is null || _pricesStock.Data.Count == 0 ? 0 : (_pricesStock.Page - 1) *
+  _pricesStock.PageSize + 1;
+    private int LastEntry => _pricesStock is null || _pricesStock.Data.Count == 0 ? 0 : FirstEntry + _pricesStock.Data.Count
+  - 1;
+}
+
+<PageTitle>Preise & Bestände</PageTitle>
+<Toaster RichColors="true" CloseButton="true" />
+
+<main class="mx-auto w-full min-w-0 max-w-7xl space-y-6 p-5 sm:p-8">
+    <PortalHeading Section="Preise & Bestände" Title="Der schnelle Datenabgleich" Icon="tags"
+                   Tenant="@Session.Tenant?.Name" />
+
+    <DataPanel Title="Filter" Icon="list-filter">
+        <EditForm Model="_query" OnValidSubmit="HandleSubmit" class="space-y-5">
+            <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                <label class="fieldset">
+                    <span class="label">Artikelnummer</span>
+                    <InputText @bind-Value="_query.ArticleNumber" class="input w-full" placeholder="z. B. 100234" />
+                </label>
+                <label class="fieldset">
+                    <span class="label">Filiale</span>
+                    @if (_isLoading && _branches is null && string.IsNullOrEmpty(_branchesError))
+                    {
+                        <span class="skeleton block h-10 w-full motion-reduce:animate-none" aria-hidden="true"></span>
+                    }
+                    else
+                    {
+                        <InputSelect @bind-Value="_query.Branch" class="select w-full">
+                            <option value="">Alle Filialen</option>
+                            @foreach (var branch in _branches ?? [])
+                            {
+                                <option value="@branch.Number">@branch.Name</option>
+                            }
+                        </InputSelect>
+                    }
+                </label>
+                <label class="fieldset">
+                    <span class="label">Geändert seit (UTC)</span>
+                    <InputDate @bind-Value="_query.ModifiedSince" class="input w-full" />
+                </label>
+                <label class="fieldset">
+                    <span class="label">Einträge pro Seite</span>
+                    <InputSelect @bind-Value="_query.PageSize" class="select w-full">
+                        @foreach (var size in new[] { 5, 10, 25, 100, 1000, 5000 })
+                        {
+                            <option value="@size">@size</option>
+                        }
+                    </InputSelect>
+                </label>
+            </div>
+            @if (!string.IsNullOrWhiteSpace(_branchesError))
+            {
+                <div class="alert alert-warning alert-soft" role="alert">
+                    <LucideIcon Name="circle-alert" Size="18" aria-hidden="true" />
+                    <span>Filialauswahl: @_branchesError</span>
+                </div>
+            }
+            <div class="flex flex-wrap items-center justify-between gap-3">
+                <label class="label gap-2 text-base-content">
+                    <InputCheckbox @bind-Value="_query.IncludeDeleted" class="checkbox checkbox-sm checkbox-primary" />
+                    Gelöschte einschließen
+                </label>
+                <button type="submit" class="btn btn-primary" disabled="@_isLoading">
+                    <LucideIcon Name="search" Size="16" aria-hidden="true" /> Filter anwenden
+                </button>
+            </div>
+        </EditForm>
+    </DataPanel>
+
+    <DataPanel Title="Preis- und Bestandsübersicht" Icon="table-2">
+        <p class="sr-only" role="status">@(_isLoading ? "Preise und Bestände werden geladen." :
+                                                            $"{_pricesStock?.TotalCount ?? 0} Einträge.")</p>
+            <DataTable Caption="Preis- und Bestandsübersicht"
+                       Headings="@(new[] { "SKU", "Artikel", "VK-Preis", "Reduziert", "Bestand", "Sofort", "Bald", "Nicht lieferbar", "Gelöscht", "Geändert (UTC)" })"
+                       Loading="@_isLoading" HasRows="@(_pricesStock?.Data.Count > 0)" Error="@_pricesStockError">
+                @foreach (var row in _pricesStock?.Data ?? [])
+                {
+                    <tr class="whitespace-nowrap tabular-nums hover:bg-base-200/70">
+                        <td><a class="link link-primary font-semibold" href="/sku-detail/@row.Sku">@row.Sku</a></td>
+                        <td><a class="link link-primary" href="/article-detail/@row.ArticleNumber">@row.ArticleNumber</a></td>
+                        <td>@row.SalesPrice €</td>
+                        <td>@(row.SalesPriceReduced is { } price ? $"{price} €" : "—")</td>
+                        <td><strong>@row.Stock</strong></td>
+                        <td>@row.Quantities.AvailableNow</td>
+                        <td>@row.Quantities.AvailableSoon</td>
+                        <td>@row.Quantities.NotAvailable</td>
+                        <td>
+                            <span class="badge badge-sm @(row.IsDeleted ? "badge-error badge-soft" : "badge-ghost")">
+                                @(row.IsDeleted ? "Ja" : "Nein")
+                            </span>
+                        </td>
+                        <td>@row.ModifiedAt.ToUniversalTime().ToString("dd.MM.yyyy HH:mm:ss")</td>
+                    </tr>
+                }
+            </DataTable>
+            <ResultsPager Loading="@_isLoading" First="@FirstEntry" Last="@LastEntry"
+                          Total="@(_pricesStock?.TotalCount ?? 0)" Page="@(_pricesStock?.Page ?? 0)"
+                          Pages="@(_pricesStock?.TotalPages ?? 0)" Previous="PreviousPageAsync" Next="NextPageAsync" />
+        </DataPanel>
+    </main>

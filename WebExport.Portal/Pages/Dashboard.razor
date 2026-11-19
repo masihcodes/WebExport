@@ -1,0 +1,192 @@
+@page "/dashboard"
+@layout PortalLayout
+@implements IDisposable
+@inject HttpClient Http
+@inject Session Session
+@inject NavigationManager Navi
+@inject ILogger<Dashboard> Logger
+
+@code {
+    private readonly Section<DashboardSummaryDto> _summary = new("summary");
+    private readonly Section<DashboardBranchStockDto[]> _branches = new("stock");
+    private readonly Section<DashboardTopCategoryDto[]> _categories = new("top-categories");
+    private readonly Section<DashboardContentQualityDto> _quality = new("quality");
+    private readonly Section<DashboardRecentArticleDto[]> _recent = new("recent");
+    private readonly CancellationTokenSource _lifetime = new();
+    private bool _loading;
+    private DateTimeOffset? _lastFetch;
+
+    protected override Task OnInitializedAsync() => RefreshAsync();
+
+    private async Task RefreshAsync()
+    {
+        if (_loading || _lifetime.IsCancellationRequested) return;
+        if (!Session.IsAuthenticated || string.IsNullOrWhiteSpace(Session.ApiKey))
+        {
+            ReturnToLogin();
+            return;
+        }
+
+        _loading = true;
+        var cancellation = _lifetime.Token;
+        try
+        {
+            await Task.WhenAll(LoadAsync(_summary, cancellation), LoadAsync(_branches, cancellation),
+                LoadAsync(_categories, cancellation), LoadAsync(_quality, cancellation), LoadAsync(_recent, cancellation));
+            if (!cancellation.IsCancellationRequested) _lastFetch = DateTimeOffset.UtcNow;
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task LoadAsync<T>(Section<T> section, CancellationToken cancellation) where T : class
+    {
+        if (cancellation.IsCancellationRequested) return;
+        section.Data = null;
+        section.Error = null;
+        try
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Get, $"api/v1/dashboard/{section.Endpoint}");
+            request.Headers.Add("X-API-KEY", Session.ApiKey);
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", Session.Current!.AccessToken);
+            using var response = await Http.SendAsync(request, cancellation);
+            if (response.StatusCode == HttpStatusCode.Unauthorized)
+            {
+                if (!cancellation.IsCancellationRequested) ReturnToLogin();
+                return;
+            }
+
+            response.EnsureSuccessStatusCode();
+            section.Data = await response.Content.ReadFromJsonAsync<T>(cancellation)
+                ?? throw new JsonException("Die Dashboard-Antwort enthält keine Daten.");
+        }
+        catch (OperationCanceledException) when (cancellation.IsCancellationRequested)
+        {
+            return;
+        }
+        catch (Exception ex) when (ex is HttpRequestException or JsonException or OperationCanceledException)
+        {
+            Logger.LogWarning(ex, "Dashboard-Abfrage {Endpoint} fehlgeschlagen.", section.Endpoint);
+            section.Error = "Dieser Bereich konnte nicht geladen werden. Bitte aktualisieren Sie das Dashboard.";
+        }
+
+        if (!cancellation.IsCancellationRequested) await InvokeAsync(StateHasChanged);
+    }
+
+    private void ReturnToLogin()
+    {
+        _lifetime.Cancel();
+        Session.Clear();
+        Navi.NavigateTo("/login");
+    }
+
+    public void Dispose()
+    {
+        _lifetime.Cancel();
+        _lifetime.Dispose();
+    }
+
+    private sealed class Section<T>(string endpoint) where T : class
+    {
+        public string Endpoint { get; } = endpoint;
+        public T? Data { get; set; }
+        public string? Error { get; set; }
+        public bool IsLoading => Data is null && Error is null;
+    }
+}
+
+
+<PageTitle>Dashboard · WebExport</PageTitle>
+
+<main class="mx-auto w-full min-w-0 max-w-7xl space-y-6 p-5 sm:p-8">
+    <PortalHeading Section="Dashboard" Title="Ihr Sortiment in Zahlen" Icon="layout-dashboard"
+                   Tenant="@Session.Tenant?.Name">
+        <div class="flex flex-wrap items-center gap-3">
+            @if (_lastFetch is { } latest)
+            {
+                <span class="text-xs text-base-content/70">Letzter Abruf <time
+                    datetime="@latest.ToString("O")">@latest.ToString("HH:mm") UTC</time></span>
+                }
+                <button type="button" class="btn btn-sm border-base-content/15 bg-base-100/80" disabled="@_loading"
+                        @onclick="RefreshAsync">
+                    @if (_loading)
+                    {
+                        <span aria-hidden="true" class="loading loading-spinner loading-xs motion-reduce:animate-none"></span>
+                    }
+                    else
+                    {
+                        <LucideIcon Name="refresh-cw" Size="15" aria-hidden="true" />
+                    }
+                    Aktualisieren
+                </button>
+            </div>
+        </PortalHeading>
+        <span class="sr-only" role="status">@(_loading ? "Dashboard wird aktualisiert." : "Datenabruf abgeschlossen.")</span>
+
+        <DashboardOverview Summary="@_summary.Data" Error="@_summary.Error" />
+        <div class="grid items-start gap-6 xl:grid-cols-12">
+            <div class="min-w-0 xl:col-span-7">
+                <DashboardBranches Branches="@_branches.Data" Error="@_branches.Error" />
+            </div>
+            <div class="min-w-0 xl:col-span-5">
+                <DashboardCategories Categories="@_categories.Data" Error="@_categories.Error" />
+            </div>
+        </div>
+        <div class="grid items-start gap-6 lg:grid-cols-2">
+            <DashboardQuality Quality="@_quality.Data" Summary="@_summary.Data" Error="@_quality.Error" />
+            <DataPanel Title="Zuletzt geänderte Artikel" Icon="history">
+                <div aria-busy="@(_recent.IsLoading ? "true" : "false")">
+                    @if (_recent.Error is not null)
+                    {
+                        <div class="alert alert-error alert-soft" role="alert">
+                            <LucideIcon Name="circle-alert" Size="18" aria-hidden="true" /> @_recent.Error
+                        </div>
+                    }
+                    else if (_recent.Data is { Length: 0 })
+                    {
+                        <p class="text-sm text-base-content/70">Keine Artikel vorhanden.</p>
+                    }
+                    else
+                    {
+                        <ul class="divide-y divide-base-content/10">
+                            @if (_recent.Data is null)
+                            {
+                                @for (var row = 0; row < 5; row++)
+                                {
+                                    <li class="flex h-16 items-center justify-between gap-3" aria-hidden="true">
+                                        <span class="skeleton h-5 w-2/5 motion-reduce:animate-none"></span>
+                                        <span class="skeleton h-4 w-16 motion-reduce:animate-none"></span>
+                                    </li>
+                                }
+                            }
+                            else
+                            {
+                                @foreach (var article in _recent.Data)
+                                {
+                                    var utc = article.ModifiedAt.ToUniversalTime();
+                                    <li @key="article.ArticleNumber">
+                                        <a href="@($"/article-detail/{Uri.EscapeDataString(article.ArticleNumber)}")"
+                                           class="group flex min-h-16 items-center gap-3 rounded-field px-1 py-2 hover:bg-base-200/60 focus-visible:outline-primary">
+                                            <span class="min-w-0 flex-1">
+                                                <span
+                                                class="block wrap-anywhere font-semibold group-hover:underline">@article.Name</span>
+                                                <span class="text-xs text-base-content/65">@article.ArticleNumber</span>
+                                            </span>
+                                            <time datetime="@utc.ToString("O")"
+                                                  class="shrink-0 text-end text-xs tabular-nums text-base-content/70">
+                                                @utc.ToString("dd.MM.yyyy")<br />@utc.ToString("HH:mm") UTC
+                                            </time>
+                                            <LucideIcon Name="chevron-right" Size="15" Class="shrink-0 text-base-content/50"
+                                                        aria-hidden="true" />
+                                        </a>
+                                    </li>
+                                }
+                            }
+                        </ul>
+                    }
+                </div>
+            </DataPanel>
+        </div>
+    </main>

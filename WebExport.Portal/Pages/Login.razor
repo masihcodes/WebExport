@@ -1,0 +1,207 @@
+﻿@page "/login"
+
+@inject HttpClient Http
+@inject NavigationManager Navi
+@inject Session Session
+@inject ILogger<Login> Logger
+
+@inject ToastService Toast
+
+
+@code
+{
+    private LoginDto _login = new LoginDto
+    {
+        ClientId = "",
+        ClientSecret = ""
+    };
+
+    private AuthResponseDto? _credentials;
+    private string _apiKey = "";
+    private bool _showSecret;
+    private bool _isLoading;
+    private string? _error;
+
+
+    private async Task HandleLoginAsync()
+    {
+        if (_isLoading) return;
+
+        if (string.IsNullOrWhiteSpace(_login.ClientId))
+        {
+            Toast.Show(title: "Bitte geben Sie Ihre Client-ID ein.");
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(_login.ClientSecret))
+        {
+            Toast.Show(title: "Bitte geben Sie Ihr Client-Secret ein.");
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(_apiKey))
+        {
+            _error = "Bitte geben Sie Ihren API-Schlüssel ein.";
+            Toast.Error(_error);
+            return;
+        }
+
+        _isLoading = true;
+        _error = null;
+
+        try
+        {
+            using HttpRequestMessage req = new HttpRequestMessage(HttpMethod.Post, requestUri: "api/v1/auth/token");
+
+            req.Headers.Add(name: "X-API-KEY", _apiKey.Trim());
+            req.Content = JsonContent.Create(_login);
+
+            using HttpResponseMessage res = await Http.SendAsync(req);
+
+            if (!res.IsSuccessStatusCode)
+            {
+                ErrorResponseDto? apiErr = await res.Content.ReadFromJsonAsync<ErrorResponseDto>();
+                _error = apiErr?.Message ?? "Die Anmeldung ist fehlgeschlagen.";
+                Toast.Error(_error);
+                return;
+            }
+
+            _credentials = await res.Content.ReadFromJsonAsync<AuthResponseDto>();
+
+            if (_credentials is null || string.IsNullOrWhiteSpace(_credentials.AccessToken))
+            {
+                Toast.Error(title: "Die API hat keine gültige Token-Antwort geliefert.");
+                return;
+            }
+
+            Session.SetCredentials(_credentials, _apiKey.Trim(), _login.ClientId);
+            Navi.NavigateTo(uri: "/status");
+            Toast.Success(title: "Anmeldung erfolgreich.");
+
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, message: "An error occurred during login. Masih");
+            Toast.Error("Die Anmeldung ist derzeit nicht möglich. Bitte versuchen Sie es erneut.");
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+}
+
+<PageTitle>Anmeldung · WebExport</PageTitle>
+
+<Toaster RichColors="true" CloseButton="true" />
+
+<section class="card mx-auto w-full min-w-0 max-w-6xl overflow-hidden shadow">
+    <div class="grid lg:grid-cols-2">
+        <aside
+            class="glass card-body order-last justify-center gap-7 bg-base-300/10 p-6 backdrop-blur-md sm:p-8 lg:order-first lg:p-10">
+            <div class="space-y-5">
+                <div class="portal-aura w-fit duration-4500 aura aura-gold aura-sm">
+                    <div
+                        class="card grid size-15 place-items-center border border-base-content/10 bg-base-100/90 text-base-content shadow">
+                        <LucideIcon Name="shield-check" Size="28" />
+                    </div>
+                </div>
+                <div class="space-y-3">
+                    <h2 id="login-guide-title" class="text-3xl font-semibold leading-tight tracking-tight sm:text-4xl">
+                        Mit Ihrem API-Client<br class="hidden sm:block" /> ins Datenportal.
+                    </h2>
+                    <p class="max-w-sm text-sm leading-relaxed text-base-content/80 sm:text-base">
+                        Halten Sie Client-ID, Client-Secret und API-Schlüssel Ihres WebExport-Zugangs bereit.
+                    </p>
+                </div>
+            </div>
+
+            <ol class="steps steps-vertical self-start text-sm">
+                <li class="step step-primary">
+                    <span class="step-icon">
+                        <LucideIcon Name="key-round" Size="16" />
+                    </span>
+                    <span class="ps-2">Mit Ihrem API-Client anmelden</span>
+                </li>
+                <li class="step">
+                    <span class="step-icon">
+                        <LucideIcon Name="building-2" Size="16" />
+                    </span>
+                    <span class="ps-2">Mandanten automatisch zuordnen</span>
+                </li>
+                <li class="step">
+                    <span class="step-icon">
+                        <LucideIcon Name="layout-dashboard" Size="16" />
+                    </span>
+                    <span class="ps-2">Sortiment und Bestände einsehen</span>
+                </li>
+            </ol>
+
+            <a href="/" class="link link-hover inline-flex w-fit items-center gap-2 text-sm text-base-content/75">
+                <LucideIcon Name="arrow-left" Size="16" /> Zur Startseite
+            </a>
+        </aside>
+
+        <div
+            class="backdrop-blur-3xl card-body order-first gap-6 border-b lg:order-last border-base-100/40 bg-base-100/65 p-6 sm:p-8 lg:border-b-0 lg:border-l lg:p-10">
+            <div class="flex size-12 items-center justify-center rounded-box bg-primary/10 text-primary">
+                <LucideIcon Name="log-in" Size="24" />
+            </div>
+            <div>
+                <h1 id="login-title" class="card-title text-2xl focus:outline-none">Anmelden</h1>
+                <p class="mt-2 text-sm text-base-content/60">Geben Sie die Zugangsdaten Ihres API-Clients ein.</p>
+            </div>
+
+            <EditForm Model="_login" OnValidSubmit="HandleLoginAsync" class="space-y-5 flex flex-col">
+                <DataAnnotationsValidator />
+
+                <label class="label font-medium text-base-content flex flex-col items-start">Client-ID
+                    <div class="input w-full bg-base-100/80 has-[.invalid]:border-error shadow-2xl">
+                        <LucideIcon Name="user-round" Size="18" Class="opacity-50" />
+                        <InputText @bind-Value="_login.ClientId" autocomplete="on"
+                                   class="min-w-0 grow font-mono text-sm" />
+                    </div>
+                    <ValidationMessage For="@(() => _login.ClientId)" class="text-xs text-error" />
+                </label>
+
+                <label class="label font-medium text-base-content flex flex-col items-start">Client-Secret
+                    <div class="input w-full bg-base-100/80 has-[.invalid]:border-error shadow-2xl">
+                        <LucideIcon Name="lock-keyhole" Size="18" Class="opacity-50" />
+                        <InputText type="@(_showSecret ? "text" : "password")" @bind-Value="_login.ClientSecret"
+                                   class="min-w-0 grow font-mono text-sm" autocomplete="on" />
+                    </div>
+                    <ValidationMessage For="@(() => _login.ClientSecret)" class="text-xs text-error" />
+                </label>
+
+                <label class="label font-medium text-base-content flex flex-col items-start">API-Schlüssel
+                    <div class="input w-full bg-base-100/80 shadow-2xl">
+                        <LucideIcon Name="key-round" Size="18" Class="opacity-50" />
+                        <InputText type="@(_showSecret ? "text" : "password")" @bind-Value="_apiKey"
+                                   class="min-w-0 grow font-mono text-sm" autocomplete="off" />
+                    </div>
+                </label>
+
+                <label class="label cursor-pointer justify-start gap-3 py-1 text-xs text-base-content/65">
+                    <InputCheckbox @bind-Value="_showSecret" class="checkbox checkbox-sm checkbox-primary" />
+                    Secret / API-Schlüssel anzeigen
+                </label>
+
+                <div class="aura-md aura aura-glow duration-100 w-full">
+                    <button type="submit" disabled="@_isLoading" class="btn btn-neutral w-full">
+                        @if (_isLoading)
+                        {
+                            <span class="loading loading-bars loading-sm"></span>
+                            <span>Anmeldung läuft …</span>
+                        }
+                        else
+                        {
+                            <span>Anmelden</span>
+                            <LucideIcon Name="arrow-right" Size="18" />
+                        }
+                    </button>
+                </div>
+            </EditForm>
+            
+        </div>
+    </div>
+</section>

@@ -1,0 +1,51 @@
+<div class="min-w-0 overflow-hidden rounded-box border border-base-content/10 bg-base-100/50"
+     aria-busy="@(Loading ? "true" : "false")">
+    <div class="overflow-x-auto focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-primary"
+         role="region" aria-label="@Caption" tabindex="0">
+        <table class="table table-sm table-zebra">
+            <caption class="sr-only">@Caption</caption>
+            <thead class="bg-base-200/80 text-base-content/75">
+                <tr>
+                    @foreach (var heading in Headings)
+                    {
+                        <th scope="col" class="whitespace-nowrap">@heading</th>
+                    }
+                </tr>
+            </thead>
+            <tbody>
+                @if (Loading)
+                {
+                    <TableSkeleton Columns="@Headings.Length" Rows="@SkeletonRows" />
+                }
+                else if (HasRows && string.IsNullOrWhiteSpace(Error))
+                {
+                    @ChildContent
+                }
+            </tbody>
+        </table>
+    </div>
+    @if (!Loading && !string.IsNullOrWhiteSpace(Error))
+    {
+        <div class="alert alert-error alert-soft rounded-none" role="alert">
+            <LucideIcon Name="circle-alert" Size="18" aria-hidden="true" />
+            <span>@Error</span>
+        </div>
+    }
+    else if (!Loading && !HasRows)
+    {
+        <p class="flex items-center justify-center gap-2 px-3 py-6 text-sm text-base-content/70" role="status">
+            <LucideIcon Name="inbox" Size="18" aria-hidden="true" /> @EmptyMessage
+        </p>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public string Caption { get; set; } = "";
+    [Parameter, EditorRequired] public string[] Headings { get; set; } = [];
+    [Parameter] public bool Loading { get; set; }
+    [Parameter] public int SkeletonRows { get; set; } = 4;
+    [Parameter] public bool HasRows { get; set; } = true;
+    [Parameter] public string EmptyMessage { get; set; } = "Keine Daten gefunden.";
+    [Parameter] public string? Error { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}

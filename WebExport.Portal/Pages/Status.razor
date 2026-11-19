@@ -1,0 +1,227 @@
+﻿@page "/status"
+@layout PortalLayout
+
+@inject HttpClient Http
+@inject NavigationManager Navi
+@inject Session Session
+@inject ILogger<Status> Logger
+
+
+@inject ToastService Toast
+
+
+
+@code {
+    private TenantResponseDto? _tenant;
+    private StatusResponseDto? _statusResponse;
+    private bool _isLoading;
+    private string? _error;
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!Session.IsAuthenticated || string.IsNullOrWhiteSpace(Session.ApiKey))
+        {
+            Session.Clear();
+            Navi.NavigateTo(uri: "/login");
+            return;
+        }
+
+        _isLoading = true;
+        _error = null;
+
+        try
+        {
+            using HttpRequestMessage tenantReq = new HttpRequestMessage(HttpMethod.Get, requestUri: "api/v1/tenant");
+            tenantReq.Headers.Add(name: "X-API-KEY", Session?.ApiKey);
+            tenantReq.Headers.Authorization = new AuthenticationHeaderValue(scheme: "Bearer", Session?.Current?.AccessToken);
+
+            using HttpRequestMessage statusReq = new HttpRequestMessage(HttpMethod.Get, requestUri: "api/v1/status");
+            statusReq.Headers.Add(name: "X-API-KEY", Session?.ApiKey);
+
+
+            using HttpResponseMessage tenantRes = await Http.SendAsync(tenantReq);
+            using HttpResponseMessage statusRes = await Http.SendAsync(statusReq);
+
+
+            if (tenantRes.StatusCode == HttpStatusCode.Unauthorized || statusRes.StatusCode == HttpStatusCode.Unauthorized)
+            {
+                Session?.Clear();
+                Navi.NavigateTo("/login");
+                return;
+            }
+
+            if (!tenantRes.IsSuccessStatusCode)
+            {
+                ErrorResponseDto? apiErr = await tenantRes.Content.ReadFromJsonAsync<ErrorResponseDto>();
+                _error = apiErr?.Message ?? "Die Statusabfrage ist fehlgeschlagen.";
+                Toast.Error(_error);
+                return;
+            }
+
+            if (!statusRes.IsSuccessStatusCode)
+            {
+                ErrorResponseDto? apiErr = await statusRes.Content.ReadFromJsonAsync<ErrorResponseDto>();
+                _error = apiErr?.Message ?? "Die Statusabfrage ist fehlgeschlagen.";
+                Toast.Error(_error);
+                _statusResponse = new StatusResponseDto
+                {
+                    Status = "Nicht erreichbar",
+                    Version = "—",
+                    DatabaseAvailable = false,
+                    Timestamp = DateTime.UtcNow
+                };
+            }
+            else
+            {
+                _statusResponse = await statusRes.Content.ReadFromJsonAsync<StatusResponseDto>();
+            }
+
+            _tenant = await tenantRes.Content.ReadFromJsonAsync<TenantResponseDto>();
+            Session?.SetTenant(_tenant!);
+            Toast.Success(title: "Status aktualisiert.");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, message: "An error occurred during login. Masih");
+            Toast.Error(title: "Die Anmeldung ist derzeit nicht möglich. Bitte versuchen Sie es erneut.");
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+}
+
+<PageTitle>Status</PageTitle>
+
+<Toaster RichColors="true" CloseButton="true" />
+
+<p class="sr-only" role="status">@(_isLoading ? "Status wird aktualisiert…" : "Statusabfrage abgeschlossen.")</p>
+
+<main class="mx-auto w-full max-w-7xl space-y-6 p-5 sm:p-8" aria-busy="@(_isLoading ? "true" : "false")">
+    <header class="space-y-3">
+        <span class="badge badge-outline gap-2 border-primary/25 bg-base-100/40 text-primary">
+            <LucideIcon Name="layout-dashboard" Size="14" aria-hidden="true" /> Datenportal · Status
+        </span>
+        <p class="text-3xl font-semibold leading-tight tracking-tight sm:text-4xl">Ihre Daten. Auf einen Blick.</p>
+        <p class="flex min-h-5 items-center gap-2 text-sm text-base-content/70">
+            <LucideIcon Name="building-2" Size="16" aria-hidden="true" />
+            @if (_isLoading)
+            {
+                <span class="skeleton h-4 w-40 motion-reduce:animate-none" aria-hidden="true"></span>
+            }
+            else
+            {
+                <span>@(_tenant?.Name ?? "—")</span>
+            }
+        </p>
+    </header>
+
+    @if (!string.IsNullOrWhiteSpace(_error))
+    {
+        <div class="alert alert-error alert-soft" role="alert">
+            <LucideIcon Name="circle-alert" Size="20" aria-hidden="true" />
+            <span>@_error</span>
+        </div>
+    }
+
+    <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <StatusStat Title="API-Status" Icon="activity" Loading="@_isLoading"
+                    Value="@(_statusResponse?.Status == "OK" ? "Erreichbar" : "Nicht erreichbar")"
+                    Description="@(_statusResponse?.Version ?? "—")"
+                    IndicatorClass="@(_statusResponse?.Status == "OK" ? "status-success" : "status-error")" />
+        <StatusStat Title="Datenbank" Icon="database" Loading="@_isLoading"
+                    Value="@(_statusResponse is null ? "—" : _statusResponse.DatabaseAvailable ? "Verbunden" : "Nicht erreichbar")"
+                    Description="PostgreSQL"
+                    IndicatorClass="@(_statusResponse is null ? "status-neutral" : _statusResponse.DatabaseAvailable ? "status-success" : "status-error")" />
+        <StatusStat Title="Mandant" Icon="building-2" Loading="@_isLoading"
+                    Value="@(_tenant is null ? "—" : $"Nr. {_tenant.Number}")" Description="@(_tenant?.Name ?? "—")" />
+        <StatusStat Title="Filialen" Icon="store" Loading="@_isLoading"
+                    Value="@(_tenant?.BranchCount.ToString() ?? "—")" Description="Filialen des Mandanten" />
+    </div>
+
+    <div class="grid gap-6 xl:grid-cols-5">
+        <section
+            class="card min-w-0 border border-base-content/10 bg-base-100/80 backdrop-blur-md shadow xl:col-span-3">
+            <div class="card-body gap-6 p-5 sm:p-6">
+                <h2 class="card-title gap-3 text-lg">
+                    <LucideIcon Name="key-round" Size="21" Class="text-primary" aria-hidden="true" /> Ihr Datenzugang
+                </h2>
+                <dl class="grid gap-x-8 gap-y-6 text-sm sm:grid-cols-2">
+                    @foreach (var (label, value, loading) in new[]
+                    {
+                        ("Angemeldeter Mandant", _tenant?.Name ?? "—", _isLoading),
+                        ("Mandantennummer", _tenant?.Number.ToString() ?? "—", _isLoading),
+                        ("Client-ID", Session?.ClientId ?? "—", false),
+                        ("Sitzung", "60 Minuten", false),
+                        ("Status geprüft am", _statusResponse?.Timestamp.ToUniversalTime().ToString(format: "dd.MM.yyyy, HH:mm:ss 'UTC'") ?? "—", _isLoading)
+                    })
+                    {
+                        <div class="min-w-0 space-y-2">
+                            <dt class="text-xs text-base-content/70">@label</dt>
+                            <dd class="min-h-5 wrap-break-word font-medium">
+                                @if (loading)
+                                {
+                                    <span class="skeleton block h-5 w-32 motion-reduce:animate-none" aria-hidden="true"></span>
+                                }
+                                else
+                                {
+                                    @value
+                                }
+                            </dd>
+                        </div>
+                    }
+                    <div class="space-y-2">
+                        <dt class="text-xs text-base-content/70">Umgebung</dt>
+                        <dd>
+                            <span class="badge badge-ghost gap-2">
+                                <LucideIcon Name="flask-conical" Size="13" aria-hidden="true" /> Lokale Testumgebung
+                            </span>
+                        </dd>
+                    </div>
+                </dl>
+                <div class="alert border-base-content/10 bg-base-200/60 text-sm text-base-content/70 shadow-none"
+                     role="note">
+                    <LucideIcon Name="info" Size="20" Class="text-primary" aria-hidden="true" />
+                    <span>Der Mandant wird durch den angemeldeten Client bestimmt. Die Filialauswahl schränkt die
+                        Bestandsanzeige ein.</span>
+                    </div>
+                </div>
+            </section>
+
+            <section
+                class="card min-w-0 border border-base-content/10 bg-base-100/80 backdrop-blur-md shadow xl:col-span-2">
+                <div class="card-body gap-6 p-5 sm:p-6">
+                    <h2 class="card-title gap-3 text-lg">
+                        <LucideIcon Name="arrow-up-right" Size="21" Class="text-primary" aria-hidden="true" /> Direkt zu
+                        Ihren Daten
+                    </h2>
+                    <ul class="menu w-full gap-3 p-0">
+                        @foreach (var (href, icon, title, description) in new[]
+                        {
+                        ("/dashboard", "layout-dashboard", "Dashboard öffnen", "Kennzahlen, Filialen und Datenqualität"),
+                        ("/articles", "package-search", "Artikel ansehen", "Sortiment, Varianten und Details"),
+                        ("/prices-stock", "tags", "Preise & Bestände", "Kompakte Übersicht je SKU"),
+                        ("/categories", "folder-tree", "Kategorien erkunden", "Von der Struktur zum Artikel")
+                    })
+                        {
+                            <li>
+                                <a href="@href"
+                                   class="flex min-h-20 gap-3 rounded-box border border-base-content/10 bg-base-100/30 p-4">
+                                    <LucideIcon Name="@icon" Size="22" Class="shrink-0 text-primary" aria-hidden="true" />
+                                    <span class="min-w-0 flex-1">
+                                        <span class="block font-semibold">@title</span>
+                                        <span class="mt-1 block text-xs font-normal text-base-content/70">@description</span>
+                                    </span>
+                                    <LucideIcon Name="arrow-right" Size="17" Class="shrink-0 text-base-content/50"
+                                                aria-hidden="true" />
+                                </a>
+                            </li>
+                        }
+                    </ul>
+                </div>
+            </section>
+        </div>
+    </main>

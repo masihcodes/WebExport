@@ -1,0 +1,185 @@
+@page "/categories"
+@layout PortalLayout
+
+@inject HttpClient Http
+@inject NavigationManager Navi
+@inject Session Session
+
+@inject ToastService Toast
+
+@code
+{
+
+    private static readonly JsonSerializerOptions ApiJsonOptions = new JsonSerializerOptions(JsonSerializerDefaults.Web)
+    {
+        Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase) }
+    };
+
+    private CategoryResponseDto[]? _categories;
+    private CategoryResponseDto? _selectedCategory;
+    private List<(int? ParentNumber, CategoryResponseDto[] Items)>? _categoryGroups;
+    private bool _activeOnly;
+
+    private bool _isLoading;
+    private string? _error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!Session.IsAuthenticated || string.IsNullOrWhiteSpace(Session.ApiKey))
+        {
+            Session.Clear();
+            Navi.NavigateTo(uri: "/login");
+            return;
+        }
+
+        await LoadCategories();
+    }
+
+    private async Task LoadCategories()
+    {
+        if (_isLoading) return;
+
+        _isLoading = true;
+        _error = null;
+
+        try
+        {
+            using var req = new HttpRequestMessage(HttpMethod.Get, requestUri: "/api/v1/categories");
+
+            req.Headers.Add(name: "Authorization", value: $"Bearer {Session?.Current?.AccessToken}");
+            req.Headers.Add(name: "X-Api-Key", value: Session?.ApiKey);
+
+            using HttpResponseMessage res = await Http.SendAsync(req);
+
+            if (res.StatusCode == HttpStatusCode.Unauthorized)
+            {
+                Session?.Clear();
+                Navi.NavigateTo(uri: "/login");
+                return;
+            }
+
+            if (!res.IsSuccessStatusCode)
+            {
+                var apiErr = await res.Content.ReadFromJsonAsync<ErrorResponseDto>();
+                _error = apiErr?.Message ?? "Die Anfrage ist fehlgeschlagen.";
+                Toast.Error(_error);
+                return;
+            }
+
+            _categories = await res.Content.ReadFromJsonAsync<CategoryResponseDto[]>(ApiJsonOptions);
+            _categoryGroups = _categories?.GroupBy(x => x.ParentNumber).Select(g => (
+              ParentNumber: g.Key,
+              Items: g.OrderBy(x => x.Rank).ToArray()
+            )).ToList();
+        }
+        catch (Exception)
+        {
+            _error = "Die API konnte nicht erreicht werden.";
+            Toast.Error(_error);
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+
+    private void SelectCategory(int number)
+    {
+        _selectedCategory = _categories?.FirstOrDefault(c => c.Number == number);
+    }
+
+}
+
+<PageTitle>Kategorien</PageTitle>
+<Toaster RichColors="true" CloseButton="true" />
+
+<main class="mx-auto w-full min-w-0 max-w-7xl space-y-6 p-5 sm:p-8">
+    <PortalHeading Section="Kategorien" Title="Struktur für Ihr Sortiment" Icon="folder-tree"
+                   Tenant="@Session.Tenant?.Name" />
+
+    <div class="grid items-start gap-6 xl:grid-cols-5">
+        <DataPanel Title="Kategoriebaum" Icon="folder-tree" Class="xl:col-span-3">
+            <label class="flex w-fit cursor-pointer items-center gap-3 text-sm">
+                <InputCheckbox class="toggle toggle-primary toggle-sm" @bind-Value="_activeOnly" />
+                Nur aktive Kategorien anzeigen
+            </label>
+
+            <span class="sr-only" role="status">@(_isLoading ? "Kategorien werden geladen …" : "")</span>
+            <div aria-busy="@(_isLoading ? "true" : "false")">
+                @if (_isLoading)
+                {
+                    <div class="space-y-2" aria-hidden="true">
+                        @for (var row = 0; row < 4; row++)
+                        {
+                            <div class="flex h-13 items-center gap-3 rounded-box border border-base-content/10 px-3">
+                                <span class="skeleton size-5 shrink-0 motion-reduce:animate-none"></span>
+                                <span class="skeleton h-4 w-1/3 motion-reduce:animate-none"></span>
+                                <span class="skeleton h-4 w-16 rounded-full motion-reduce:animate-none"></span>
+                            </div>
+                        }
+                    </div>
+                }
+                else if (!string.IsNullOrWhiteSpace(_error))
+                {
+                    <div role="alert" class="alert alert-soft alert-error">
+                        <LucideIcon Name="circle-alert" Size="20" aria-hidden="true" /> <span>@_error</span>
+                    </div>
+                }
+                else
+                {
+                    var groups = _categoryGroups ?? [];
+                    var roots = groups.FirstOrDefault(group => group.ParentNumber is null).Items ?? [];
+                    var visibleRoots = roots.Where(root => !_activeOnly || root.IsActive).ToArray();
+
+                    if (visibleRoots.Length == 0)
+                    {
+                        <div class="alert alert-soft" role="status">
+                            <LucideIcon Name="folder-open" Size="20" aria-hidden="true" />
+                            <span>@(_activeOnly ? "Keine aktiven Kategorien gefunden." : "Keine Kategorien gefunden.")</span>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="space-y-2">
+                            @foreach (var root in visibleRoots)
+                            {
+                                <CategoryNode @key="root.Number" Category="root" Groups="groups" ActiveOnly="_activeOnly"
+                                              SelectedNumber="_selectedCategory?.Number" OnSelect="SelectCategory" />
+                            }
+                        </div>
+                    }
+                }
+            </div>
+        </DataPanel>
+
+        <DataPanel Title="Kategoriedetail" Icon="folder-search" Class="xl:sticky xl:top-28 xl:col-span-2">
+            <div id="category-detail" aria-live="polite" aria-atomic="true">
+                @if (_selectedCategory is { } category)
+                {
+                    <dl class="grid gap-x-6 gap-y-5 text-sm sm:grid-cols-2">
+                        <DetailField Label="Nummer">@category.Number</DetailField>
+                        <DetailField Label="Name">@category.Name</DetailField>
+                        <DetailField Label="Übergeordnete Kategorie">@(category.ParentNumber?.ToString() ?? "—")
+                        </DetailField>
+                        <DetailField Label="Rang">@category.Rank</DetailField>
+                        <DetailField Label="Suchbegriffe">@(category.SearchTerms ?? "—")</DetailField>
+                        <DetailField Label="Aktiv">
+                            <span
+                                class="badge badge-sm badge-soft @(category.IsActive ? "badge-success" : "badge-neutral")">
+                                @(category.IsActive ? "Ja" : "Nein")
+                            </span>
+                        </DetailField>
+                    </dl>
+                }
+                else
+                {
+                    <p class="flex items-center gap-3 text-sm text-base-content/70">
+                        <LucideIcon Name="mouse-pointer-click" Size="18" Class="shrink-0" aria-hidden="true" />
+                        Bitte wählen Sie eine Kategorie aus.
+                    </p>
+                }
+            </div>
+        </DataPanel>
+    </div>
+</main>

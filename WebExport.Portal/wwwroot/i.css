@@ -1,0 +1,177 @@
+@import "tailwindcss";
+
+@plugin "daisyui" {
+  themes: false;
+}
+
+@plugin "daisyui/theme" {
+  name: "abyss";
+  default: true;
+}
+
+@plugin "daisyui/theme" {
+  name: "caramellatte";
+  /* default: true; */
+}
+
+@plugin "daisyui/theme" {
+  name: "valentine";
+  /* default: true; */
+}
+
+@plugin "daisyui/theme" {
+  /* default: true; */
+  name: "dark";
+  --color-base-100: oklch(21% 0.019 73.684);
+  --color-base-200: oklch(26% 0.027 75.164);
+  --color-base-300: oklch(32% 0.04 70.697);
+  --color-base-content: oklch(92% 0.025 38.172);
+  --color-primary: oklch(96% 0 0);
+  --color-primary-content: oklch(14% 0 0);
+  --color-secondary: oklch(72% 0.082 37.85);
+  --color-secondary-content: oklch(18% 0.03 37.85);
+  --color-accent: oklch(70% 0.115 37.85);
+  --color-accent-content: oklch(17% 0.03 37.85);
+  --color-neutral: oklch(43% 0.1 38.402);
+  --color-neutral-content: oklch(98% 0.016 73.684);
+  --color-info: oklch(72% 0.13 265.638);
+  --color-info-content: oklch(16% 0.04 265.638);
+  --color-success: oklch(72% 0.11 166.913);
+  --color-success-content: oklch(16% 0.03 166.913);
+  --color-warning: oklch(82% 0.16 84.429);
+  --color-warning-content: oklch(25% 0.075 45.904);
+  --color-error: oklch(72% 0.14 22.216);
+  --color-error-content: oklch(18% 0.065 25.723);
+  --radius-selector: 2rem;
+  --radius-field: 0.5rem;
+  --radius-box: 1rem;
+  --size-selector: 0.25rem;
+  --size-field: 0.25rem;
+  --border: 2px;
+  --depth: 1;
+  --noise: 1;
+}
+
+@theme {
+  /* --font-sans: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  --font-serif: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  --font-mono: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; */
+
+  --spacing: 0.18rem;
+
+  --shadow-2xs: 0px 2px 4px 0px hsl(0 0% 10.1961% / 0.50);
+  --shadow-xs: 0px 2px 4px 0px hsl(0 0% 10.1961% / 0.50);
+  --shadow-sm: 0px 2px 4px 0px hsl(0 0% 10.1961% / 1.00), 0px 1px 2px -1px hsl(0 0% 10.1961% / 1.00);
+  --shadow: 0px 2px 4px 0px hsl(0 0% 10.1961% / 1.00), 0px 1px 2px -1px hsl(0 0% 10.1961% / 1.00);
+  --shadow-md: 0px 2px 4px 0px hsl(0 0% 10.1961% / 1.00), 0px 2px 4px -1px hsl(0 0% 10.1961% / 1.00);
+  --shadow-lg: 0px 2px 4px 0px hsl(0 0% 10.1961% / 1.00), 0px 4px 6px -1px hsl(0 0% 10.1961% / 1.00);
+  --shadow-xl: 0px 2px 4px 0px hsl(0 0% 10.1961% / 1.00), 0px 8px 10px -1px hsl(0 0% 10.1961% / 1.00);
+  --shadow-2xl: 0px 2px 4px 0px hsl(0 0% 10.1961% / 1.00);
+}
+
+/* Shared public-page presentation; authentication code stays in each page. */
+/* @layer components {
+  .portal-shell {
+    --spacing: 0.25rem;
+    font-family: ui-sans-serif, system-ui, sans-serif;
+  } */
+
+/* 
+  .portal-shell .glass {
+    --glass-blur: 24px;
+    --glass-opacity: 55%;
+    --glass-border-opacity: 40%;
+    --glass-text-shadow-opacity: 0%;
+  } */
+
+/* .portal-shell:has(.theme-controller[value="dark"]:checked) .glass {
+    --glass-opacity: 10%;
+    --glass-reflect-opacity: 2%;
+    --glass-border-opacity: 20%;
+  } */
+
+/* .portal-shell h1:focus {
+    outline: none;
+  } */
+/* } */
+
+/* @layer components {
+  .portal-shell {
+    --spacing: 0.25rem;
+    font-family: ui-sans-serif, system-ui, sans-serif;
+  }
+} */
+
+/* .portal-theme-trigger {
+  anchor-name: --portal-theme-button;
+}
+
+.portal-theme-options[popover] {
+  inset: 6rem 0.75rem 0.75rem auto;
+  width: min(17rem, calc(100% - 1.5rem));
+  height: auto;
+  max-height: 26rem;
+  margin: 0;
+}
+
+.portal-theme-options:popover-open {
+  display: flex;
+  flex-direction: column;
+}
+
+@supports (top: anchor(bottom)) {
+  .portal-theme-options[popover] {
+    position-anchor: --portal-theme-button;
+    position-area: none;
+    top: max(0.75rem, calc(anchor(bottom) + 0.5rem));
+    right: clamp(0.75rem, anchor(right), calc(100% - 17.75rem));
+  }
+}
+
+@utility portal-intro {
+  animation: portal-enter 550ms ease-out both;
+}
+
+@keyframes portal-enter {
+  from { opacity: 0; transform: translateY(0.5rem); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.portal-rotate > span,
+.portal-aura {
+  animation-iteration-count: 1;
+}
+
+.portal-accent-text {
+  color: color-mix(in oklab, var(--color-base-content) 55%, var(--color-accent));
+} */
+
+
+@plugin "daisyui/theme" {
+  name: "emerald";
+}
+
+
+@plugin "daisyui/theme" {
+  name: "lofi";
+}
+
+@plugin "daisyui/theme" {
+  name: "black";
+}
+
+@plugin "daisyui/theme" {
+  name: "luxury";
+}
+
+@plugin "daisyui/theme" {
+  name: "autumn";
+}
+
+@plugin "daisyui/theme" {
+  name: "night";
+}
+
+@plugin "daisyui/theme" {
+  name: "dim";
+}

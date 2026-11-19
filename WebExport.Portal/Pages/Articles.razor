@@ -1,0 +1,376 @@
+﻿@page "/articles"
+@layout PortalLayout
+
+@inject HttpClient Http
+@inject NavigationManager Navi
+@inject Session Session
+@inject ILogger<Articles> Logger
+
+@inject ToastService Toast
+
+
+
+@code
+{
+    private static readonly JsonSerializerOptions ApiJsonOptions = new JsonSerializerOptions(JsonSerializerDefaults.Web)
+    {
+        Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase) }
+    };
+
+    [SupplyParameterFromQuery(Name = "category")]
+    private string? CategoryFromUrl { get; set; }
+
+    private ArticleListQueryDto _query = new()
+    {
+        Page = 1,
+        PageSize = 25,
+        ArticleNumber = null,
+        Category = null,
+        Branch = null,
+        ModifiedSince = null,
+        IncludeDeleted = false
+    };
+
+    private PagedResponseDto<ArticleResponseDto>? _articlesPage;
+    private BranchResponseDto[]? _branches;
+    private CategoryResponseDto[]? _categories;
+
+    private bool _isLoading;
+    private string? _articlesError;
+    private string? _branchesError;
+    private string? _categoriesError;
+
+    private long? _requestDurationMs;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!Session.IsAuthenticated || string.IsNullOrWhiteSpace(Session.ApiKey))
+        {
+            Session.Clear();
+            Navi.NavigateTo("/login");
+            return;
+        }
+
+        _query.Category = int.TryParse(CategoryFromUrl, out var categoryNumber) ? categoryNumber : null;
+
+        await Task.WhenAll(LoadArticlesAsync(), LoadBranchesAsync(), LoadCategoriesAsync());
+    }
+
+    private async Task LoadArticlesAsync()
+    {
+        if (_isLoading) return;
+
+        _isLoading = true;
+        _articlesError = "";
+        _requestDurationMs = null;
+
+        try
+        {
+            using HttpRequestMessage req = new HttpRequestMessage(HttpMethod.Post, requestUri: "api/v1/articles");
+
+            req.Headers.Add(name: "X-API-KEY", Session?.ApiKey);
+            req.Headers.Authorization = new AuthenticationHeaderValue(scheme: "Bearer", Session?.Current?.AccessToken);
+
+            req.Content = JsonContent.Create(_query);
+
+            Stopwatch stopwatch = Stopwatch.StartNew();
+
+            using HttpResponseMessage res = await Http.SendAsync(req);
+
+            if (res.StatusCode == HttpStatusCode.Unauthorized)
+            {
+                Session?.Clear();
+                Navi.NavigateTo("/login");
+                return;
+            }
+
+            if (!res.IsSuccessStatusCode)
+            {
+                var apiError = await res.Content.ReadFromJsonAsync<ErrorResponseDto>();
+                _articlesError = apiError?.Message ?? "Die Anfrage ist fehlgeschlagen.";
+                Toast.Error(_articlesError);
+                return;
+            }
+
+            _articlesPage = await res.Content.ReadFromJsonAsync<PagedResponseDto<ArticleResponseDto>>(ApiJsonOptions);
+            stopwatch.Stop();
+            _requestDurationMs = stopwatch.ElapsedMilliseconds;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, message: "An error occurred during login. Masih");
+            Toast.Error(title: "Die Anmeldung ist derzeit nicht möglich. Bitte versuchen Sie es erneut.");
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task LoadBranchesAsync()
+    {
+        _branchesError = "";
+        try
+        {
+            using HttpRequestMessage req = new HttpRequestMessage(HttpMethod.Get, requestUri: "api/v1/branches");
+            req.Headers.Add(name: "X-API-KEY", Session?.ApiKey);
+            req.Headers.Authorization = new AuthenticationHeaderValue(scheme: "Bearer", Session?.Current?.AccessToken);
+
+            using HttpResponseMessage res = await Http.SendAsync(req);
+
+            if (res.StatusCode == HttpStatusCode.Unauthorized)
+            {
+                Session?.Clear();
+                Navi.NavigateTo("/login");
+                return;
+            }
+
+            if (!res.IsSuccessStatusCode)
+            {
+                ErrorResponseDto? apiError = await res.Content.ReadFromJsonAsync<ErrorResponseDto>();
+                _branchesError = apiError?.Message ?? "Die Anfrage ist fehlgeschlagen.";
+                Toast.Error(_branchesError);
+                return;
+            }
+
+            _branches = await res.Content.ReadFromJsonAsync<BranchResponseDto[]>();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, message: "An error occurred during login. Masih");
+            Toast.Error(title: "Die Anmeldung ist derzeit nicht möglich. Bitte versuchen Sie es erneut.");
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task LoadCategoriesAsync()
+    {
+        _categoriesError = "";
+        try
+        {
+            using HttpRequestMessage req = new HttpRequestMessage(HttpMethod.Get, requestUri: "api/v1/categories");
+            req.Headers.Add(name: "X-API-KEY", Session?.ApiKey);
+            req.Headers.Authorization = new AuthenticationHeaderValue(scheme: "Bearer", Session?.Current?.AccessToken);
+
+            using HttpResponseMessage res = await Http.SendAsync(req);
+
+            if (res.StatusCode == HttpStatusCode.Unauthorized)
+            {
+                Session?.Clear();
+                Navi.NavigateTo("/login");
+                return;
+            }
+
+            if (!res.IsSuccessStatusCode)
+            {
+                ErrorResponseDto? apiError = await res.Content.ReadFromJsonAsync<ErrorResponseDto>();
+                _categoriesError = apiError?.Message ?? "Die Anfrage ist fehlgeschlagen.";
+                Toast.Error(_categoriesError);
+                return;
+            }
+
+            _categories = await res.Content.ReadFromJsonAsync<CategoryResponseDto[]>();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, message: "An error occurred during login. Masih");
+            Toast.Error(title: "Die Anmeldung ist derzeit nicht möglich. Bitte versuchen Sie es erneut.");
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private Task HandleSubmit()
+    {
+        _query.Page = 1;
+        return LoadArticlesAsync();
+    }
+
+    private void NavigateToDetail(string articleNumber)
+    {
+        Navi.NavigateTo($"/article-detail/{articleNumber}");
+    }
+
+    private async Task NextPageAsync()
+    {
+        if (_isLoading) return;
+        if (_articlesPage != null && _query.Page < _articlesPage.TotalPages)
+        {
+            _query.Page++;
+            await LoadArticlesAsync();
+        }
+    }
+
+    private async Task PreviousPageAsync()
+    {
+        if (_isLoading) return;
+        if (_query.Page > 1)
+        {
+            _query.Page--;
+            await LoadArticlesAsync();
+        }
+    }
+
+    private int FirstEntry => _articlesPage is null || _articlesPage.Data.Count == 0
+      ? 0
+      : (_articlesPage.Page - 1)
+      * _articlesPage.PageSize + 1;
+
+    private int LastEntry => _articlesPage is null || _articlesPage.Data.Count == 0
+      ? 0
+      : FirstEntry +
+      _articlesPage.Data.Count - 1;
+
+}
+
+<PageTitle>Artikel</PageTitle>
+<Toaster RichColors="true" CloseButton="true" />
+
+<main class="mx-auto w-full min-w-0 max-w-7xl space-y-6 p-5 sm:p-8">
+    <PortalHeading Section="Artikel" Title="Das Sortiment im Überblick" Icon="package" Tenant="@Session.Tenant?.Name" />
+
+    <DataPanel Title="Artikel filtern" Icon="sliders-horizontal">
+
+        <EditForm Model="_query" OnValidSubmit="HandleSubmit" class="space-y-5">
+            <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+
+                <label class="fieldset min-w-0">
+                    <span class="label">Artikelnummer</span>
+                    <InputText @bind-Value="_query.ArticleNumber" class="input w-full" placeholder="z. B. 100234" />
+                </label>
+
+                <label class="fieldset min-w-0">
+                    <span class="label">Kategorie</span>
+                    @if (_isLoading && _categories is null && string.IsNullOrEmpty(_categoriesError))
+                    {
+                        <span class="skeleton h-10 w-full"></span>
+                    }
+                    else
+                    {
+                        <InputSelect @bind-Value="_query.Category" class="select w-full">
+                            <option value="">Alle Kategorien</option>
+                            @foreach (var category in _categories ?? [])
+                            {
+                                <option value="@category.Number">@category.Name</option>
+                            }
+                        </InputSelect>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(_categoriesError))
+                    {
+                        <span class="text-error" role="alert">@_categoriesError</span>
+                    }
+                </label>
+
+                <label class="fieldset min-w-0">
+                    <span class="label">Filiale</span>
+                    @if (_isLoading && _branches is null && string.IsNullOrEmpty(_branchesError))
+                    {
+                        <span class="skeleton h-10 w-full"></span>
+                    }
+                    else
+                    {
+                        <InputSelect @bind-Value="_query.Branch" class="select w-full">
+                            <option value="">Alle Filialen</option>
+                            @foreach (var branch in _branches ?? [])
+                            {
+                                <option value="@branch.Number">@branch.Name</option>
+                            }
+                        </InputSelect>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(_branchesError))
+                    {
+                        <span class="text-error" role="alert">@_branchesError</span>
+                    }
+                </label>
+                
+                <label class="fieldset min-w-0">
+                    <span class="label">Geändert seit (UTC)</span>
+                    <InputDate @bind-Value="_query.ModifiedSince" class="input w-full" />
+                </label>
+                <label class="fieldset min-w-0">
+                    <span class="label">Einträge pro Seite</span>
+                    <InputSelect @bind-Value="_query.PageSize" class="select w-full">
+                        @foreach (var size in new[] { 5, 10, 25, 50, 100, 200 })
+                        {
+                            <option value="@size">@size</option>
+                        }
+                    </InputSelect>
+                </label>
+            </div>
+            <div class="flex flex-wrap items-center justify-between gap-4">
+                <label class="flex items-center gap-2 text-sm">
+                    <InputCheckbox @bind-Value="_query.IncludeDeleted" class="checkbox checkbox-sm" /> Gelöschte
+                    einschließen
+                </label>
+                <button type="submit" class="btn btn-primary" disabled="@_isLoading">
+                    <LucideIcon Name="search" Size="16" /> Filter anwenden
+                </button>
+            </div>
+        </EditForm>
+    </DataPanel>
+
+    <p class="sr-only" role="status">@(_isLoading ? "Artikel werden geladen …" : "")</p>
+    
+    <DataPanel Title="Artikelübersicht" Icon="layers">
+        <DataTable Caption="Artikel des angemeldeten Mandanten"
+                   Headings="@(new[] { "Artikel-Nr.", "Bezeichnung / Kollektion", "Hersteller", "Kategorie", "Status", "Geändert (UTC)", "Details" })"
+                   Loading="@_isLoading" HasRows="@(_articlesPage?.Data.Count > 0)" Error="@_articlesError"
+                   EmptyMessage="Keine Artikel gefunden.">
+            @foreach (var article in _articlesPage?.Data ?? [])
+            {
+                <tr>
+                    <th scope="row" class="whitespace-nowrap font-mono">@article.ArticleNumber</th>
+                    <td>
+                        <span class="block font-semibold">@article.Name</span>
+                        <span class="text-xs text-base-content/70">@article.Label</span>
+                    </td>
+                    <td>@article.Manufacturer</td>
+                    <td>
+                        @foreach (var category in article.Categories)
+                        {
+                            <span class="block">
+                                @category.Number · @(_categories?.FirstOrDefault(c => c.Number == category.Number)?.Name ?? "—")
+                            </span>
+                        }
+                    </td>
+                    <td><span class="badge badge-sm badge-soft @(article.IsDeleted ? "badge-error" : "badge-success")">
+                        @(article.IsDeleted ? "Gelöscht" : "Aktiv")
+                    </span></td>
+                    <td class="whitespace-nowrap tabular-nums">@article.ModifiedAt.UtcDateTime.ToString("dd.MM.yyyy HH:mm:ss")</td>
+                    <td>
+                        <button type="button" class="btn btn-sm btn-ghost"
+                                @onclick="() => NavigateToDetail(article.ArticleNumber)">
+                            Öffnen
+                            <LucideIcon Name="arrow-right" Size="16" />
+                        </button>
+                    </td>
+                </tr>
+            }
+        </DataTable>
+
+        <div class="flex flex-wrap items-center gap-x-5 gap-y-3">
+            <span class="badge badge-ghost badge-sm gap-1.5" title="Anfragedauer">
+                <LucideIcon Name="timer" Size="14" />
+                <span class="sr-only">Anfragedauer</span>
+                @if (_isLoading)
+                {
+                    <span class="skeleton h-3 w-10"></span>
+                }
+                else
+                {
+                    <span>@(_requestDurationMs.HasValue ? $"{_requestDurationMs} ms" : "—")</span>
+                }
+            </span>
+            <div class="min-w-0 grow">
+                <ResultsPager Loading="@_isLoading" First="@FirstEntry" Last="@LastEntry"
+                              Total="@(_articlesPage?.TotalCount ?? 0)" Page="@(_articlesPage?.Page ?? 0)"
+                              Pages="@(_articlesPage?.TotalPages ?? 0)" Previous="PreviousPageAsync" Next="NextPageAsync" />
+            </div>
+        </div>
+    </DataPanel>
+</main>

@@ -1,0 +1,284 @@
+@page "/branch-stock"
+@layout PortalLayout
+
+@inject HttpClient Http
+@inject NavigationManager Navi
+@inject Session Session
+
+@inject ToastService Toast
+
+
+@code
+{
+    private static readonly JsonSerializerOptions ApiJsonOptions = new JsonSerializerOptions(JsonSerializerDefaults.Web)
+    {
+        Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase) }
+    };
+
+    [SupplyParameterFromQuery(Name = "sku")]
+    public string? UrlSku { get; set; }
+
+    private BranchStockListQueryDto _query = new BranchStockListQueryDto
+    {
+        Page = 1,
+        PageSize = 25,
+        Sku = null,
+        ArticleNumber = null,
+        Branch = null,
+        ModifiedSince = null
+    };
+
+    private PagedResponseDto<BranchStockResponseDto>? _branchStock;
+    private BranchResponseDto[]? _branches;
+
+    private bool _isLoading;
+    private string? _branchStockError;
+    private string? _branchesError;
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!Session.IsAuthenticated || string.IsNullOrWhiteSpace(Session.ApiKey))
+        {
+            Session.Clear();
+            Navi.NavigateTo(uri: "/login");
+            return;
+        }
+
+        _query.Sku = UrlSku?.Trim();
+        await Task.WhenAll(LoadBranchStockAsync(), LoadBranchesAsync());
+    }
+
+    private async Task LoadBranchStockAsync()
+    {
+        if (_isLoading) return;
+
+        _isLoading = true;
+        _branchStockError = "";
+        _branchStock = null;
+        try
+        {
+            List<string> query = new List<string>
+            {
+                $"page={_query.Page}",
+                $"pageSize={_query.PageSize}",
+            };
+
+            if (!string.IsNullOrWhiteSpace(_query.ArticleNumber))
+                query.Add(item: $"articleNumber={Uri.EscapeDataString(_query.ArticleNumber.Trim())}");
+
+            if (!string.IsNullOrWhiteSpace(_query.Sku))
+                query.Add(item: $"sku={Uri.EscapeDataString(_query.Sku.Trim())}");
+
+
+            if (_query.Branch is not null)
+                query.Add(item: $"branch={_query.Branch}");
+
+            if (_query.ModifiedSince is not null)
+            {
+                string isoDate = _query.ModifiedSince.Value.ToString(format: "o");
+                query.Add(item: $"modifiedSince={Uri.EscapeDataString(isoDate)}");
+            }
+
+            string requestUri = $"/api/v1/branch-stock?{string.Join(separator: "&", query)}";
+
+            using HttpRequestMessage req = new HttpRequestMessage(HttpMethod.Get, requestUri);
+
+            req.Headers.Add(name: "X-API-KEY", Session?.ApiKey);
+            req.Headers.Authorization = new AuthenticationHeaderValue(scheme: "Bearer", Session?.Current?.AccessToken);
+
+            using HttpResponseMessage res = await Http.SendAsync(req);
+
+            if (res.StatusCode == HttpStatusCode.Unauthorized)
+            {
+                Session?.Clear();
+                Navi.NavigateTo(uri: "/login");
+                return;
+            }
+
+            if (!res.IsSuccessStatusCode)
+            {
+                ErrorResponseDto? apiErr = await res.Content.ReadFromJsonAsync<ErrorResponseDto>();
+                _branchStockError = apiErr?.Message ?? "Die Anfrage ist fehlgeschlagen.";
+                Toast.Error(_branchStockError);
+                return;
+            }
+
+            _branchStock = await res.Content.ReadFromJsonAsync<PagedResponseDto<BranchStockResponseDto>>(ApiJsonOptions);
+        }
+        catch (Exception)
+        {
+            _branchStockError = "Die API konnte nicht erreicht werden.";
+            Toast.Error(_branchStockError);
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task LoadBranchesAsync()
+    {
+        _branchesError = "";
+        try
+        {
+            using HttpRequestMessage req = new HttpRequestMessage(HttpMethod.Get, requestUri: "api/v1/branches");
+            req.Headers.Add(name: "X-API-KEY", Session?.ApiKey);
+            req.Headers.Authorization = new AuthenticationHeaderValue(scheme: "Bearer", Session?.Current?.AccessToken);
+
+            using HttpResponseMessage res = await Http.SendAsync(req);
+
+            if (res.StatusCode == HttpStatusCode.Unauthorized)
+            {
+                Session?.Clear();
+                Navi.NavigateTo("/login");
+                return;
+            }
+
+            if (!res.IsSuccessStatusCode)
+            {
+                ErrorResponseDto? apiErr = await res.Content.ReadFromJsonAsync<ErrorResponseDto>();
+                _branchesError = apiErr?.Message ?? "Die Anfrage ist fehlgeschlagen.";
+                Toast.Error(_branchesError);
+                return;
+            }
+
+            _branches = await res.Content.ReadFromJsonAsync<BranchResponseDto[]>();
+        }
+        catch (HttpRequestException)
+        {
+            _branchesError = "Die API konnte nicht erreicht werden.";
+            Toast.Error(_branchesError);
+        }
+        catch (OperationCanceledException)
+        {
+            _branchesError = "Die Anfrage wurde abgebrochen oder hat zu lange gedauert.";
+            Toast.Error(_branchesError);
+        }
+        catch (Exception)
+        {
+            _branchesError = "Bei der Verarbeitung der Anfrage ist ein unerwarteter Fehler aufgetreten.";
+            Toast.Error(_branchesError);
+        }
+    }
+
+    private Task HandleSubmit()
+    {
+        _query.Page = 1;
+        return LoadBranchStockAsync();
+    }
+
+    private async Task NextPageAsync()
+    {
+        if (_isLoading) return;
+        if (_branchStock != null && _query.Page < _branchStock.TotalPages)
+        {
+            _query.Page++;
+            await LoadBranchStockAsync();
+        }
+    }
+
+    private async Task PreviousPageAsync()
+    {
+        if (_isLoading) return;
+        if (_query.Page > 1)
+        {
+            _query.Page--;
+            await LoadBranchStockAsync();
+        }
+    }
+
+    private int FirstEntry => _branchStock is null || _branchStock.Data.Count == 0 ? 0 : (_branchStock.Page - 1) *
+  _branchStock.PageSize + 1;
+    private int LastEntry => _branchStock is null || _branchStock.Data.Count == 0 ? 0 : FirstEntry + _branchStock.Data.Count
+  - 1;
+}
+
+
+<PageTitle>Filialbestände</PageTitle>
+<Toaster RichColors="true" CloseButton="true" />
+
+<main class="mx-auto w-full min-w-0 max-w-7xl space-y-6 p-5 sm:p-8">
+    <PortalHeading Section="Filialbestände" Title="Bestände nach Standort" Icon="store"
+                   Tenant="@Session.Tenant?.Name" />
+
+    <DataPanel Title="Filter" Icon="list-filter">
+        <EditForm Model="_query" OnValidSubmit="HandleSubmit" class="space-y-5">
+            <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+                <label class="fieldset">
+                    <span class="label">Artikelnummer</span>
+                    <InputText @bind-Value="_query.ArticleNumber" class="input w-full" placeholder="z. B. 100234" />
+                </label>
+                <label class="fieldset">
+                    <span class="label">SKU</span>
+                    <InputText @bind-Value="_query.Sku" class="input w-full" placeholder="z. B. 100234-0815-042" />
+                </label>
+                <label class="fieldset">
+                    <span class="label">Filiale</span>
+                    @if (_isLoading && _branches is null && string.IsNullOrEmpty(_branchesError))
+                    {
+                        <span class="skeleton block h-10 w-full motion-reduce:animate-none" aria-hidden="true"></span>
+                    }
+                    else
+                    {
+                        <InputSelect @bind-Value="_query.Branch" class="select w-full">
+                            <option value="">Alle Filialen</option>
+                            @foreach (var branch in _branches ?? [])
+                            {
+                                <option value="@branch.Number">@branch.Name</option>
+                            }
+                        </InputSelect>
+                    }
+                </label>
+                <label class="fieldset">
+                    <span class="label">Geändert seit (UTC)</span>
+                    <InputDate @bind-Value="_query.ModifiedSince" class="input w-full" />
+                </label>
+                <label class="fieldset">
+                    <span class="label">Einträge pro Seite</span>
+                    <InputSelect @bind-Value="_query.PageSize" class="select w-full">
+                        @foreach (var size in new[] { 5, 10, 25, 100, 1000, 5000 })
+                        {
+                            <option value="@size">@size</option>
+                        }
+                    </InputSelect>
+                </label>
+            </div>
+            @if (!string.IsNullOrWhiteSpace(_branchesError))
+            {
+                <div class="alert alert-warning alert-soft" role="alert">
+                    <LucideIcon Name="circle-alert" Size="18" aria-hidden="true" />
+                    <span>Filialauswahl: @_branchesError</span>
+                </div>
+            }
+            <div class="flex flex-wrap items-center justify-end gap-3">
+                <button type="submit" class="btn btn-primary" disabled="@_isLoading">
+                    <LucideIcon Name="search" Size="16" aria-hidden="true" /> Filter anwenden
+                </button>
+            </div>
+        </EditForm>
+    </DataPanel>
+
+    <DataPanel Title="Bestände je Filiale" Icon="warehouse">
+        <p class="sr-only" role="status">@(_isLoading ? "Filialbestände werden geladen." : $"{_branchStock?.TotalCount
+                                                                                                ?? 0} Einträge.")</p>
+            <DataTable Caption="Bestände je Filiale"
+                       Headings="@(new[] { "SKU", "Artikel", "Filial-Nr.", "Filiale", "Bestand", "Geändert (UTC)" })"
+                       Loading="@_isLoading" HasRows="@(_branchStock?.Data.Count > 0)" Error="@_branchStockError">
+                @foreach (var row in _branchStock?.Data ?? [])
+                {
+                    <tr class="whitespace-nowrap tabular-nums hover:bg-base-200/70">
+                        <td><a class="link link-primary font-semibold" href="/sku-detail/@row.Sku">@row.Sku</a></td>
+                        <td><a class="link link-primary" href="/article-detail/@row.ArticleNumber">@row.ArticleNumber</a></td>
+                        <td>@row.Branch</td>
+                        <td>@(_branches?.FirstOrDefault(branch => branch.Number == row.Branch)?.Name ?? "—")</td>
+                        <td><strong>@row.Stock</strong></td>
+                        <td>@row.ModifiedAt.ToUniversalTime().ToString("dd.MM.yyyy HH:mm:ss")</td>
+                    </tr>
+                }
+            </DataTable>
+            <ResultsPager Loading="@_isLoading" First="@FirstEntry" Last="@LastEntry"
+                          Total="@(_branchStock?.TotalCount ?? 0)" Page="@(_branchStock?.Page ?? 0)"
+                          Pages="@(_branchStock?.TotalPages ?? 0)" Previous="PreviousPageAsync" Next="NextPageAsync" />
+        </DataPanel>
+    </main>

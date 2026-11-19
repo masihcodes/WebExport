@@ -1,8 +1,8 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": null,
-  "installCommand": "",
-  "buildCommand": "bash BlazorApp/build-vercel.sh",
+  "installCommand": "npm --prefix WebExport.Portal ci --include=dev",
+  "buildCommand": "bash WebExport.Portal/build-vercel.sh",
   "outputDirectory": "publish/wwwroot",
   "rewrites": [
     { "source": "/(.*)", "destination": "/index.html" }

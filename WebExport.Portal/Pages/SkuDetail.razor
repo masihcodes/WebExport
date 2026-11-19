@@ -1,0 +1,245 @@
+@page "/sku-detail/{SkuNumber}"
+@layout PortalLayout
+
+@inject HttpClient Http
+@inject NavigationManager Navi
+@inject Session Session
+
+@inject ToastService Toast
+
+
+@code
+{
+    [Parameter]
+    public string SkuNumber { get; set; } = string.Empty;
+
+    private static readonly JsonSerializerOptions ApiJsonOptions = new JsonSerializerOptions(JsonSerializerDefaults.Web)
+    {
+        Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase) }
+    };
+
+    private SkuResponseDto? _sku;
+
+    private bool _isLoading;
+    private string? _skuError;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (!Session.IsAuthenticated || string.IsNullOrWhiteSpace(Session.ApiKey))
+        {
+            Session.Clear();
+            Navi.NavigateTo(uri: "/login");
+            return;
+        }
+
+        await LoadSkuAsync();
+    }
+
+    private async Task LoadSkuAsync()
+    {
+        _isLoading = true;
+        _skuError = "";
+        _sku = null;
+        try
+        {
+            using HttpRequestMessage req = new HttpRequestMessage(HttpMethod.Get, $"/api/v1/skus/{SkuNumber}");
+
+            req.Headers.Add(name: "X-API-KEY", Session?.ApiKey);
+            req.Headers.Authorization = new AuthenticationHeaderValue(scheme: "Bearer", Session?.Current?.AccessToken);
+
+            using HttpResponseMessage res = await Http.SendAsync(req);
+
+            if (res.StatusCode == HttpStatusCode.Unauthorized)
+            {
+                Session?.Clear();
+                Navi.NavigateTo("/login");
+                return;
+            }
+
+            if (!res.IsSuccessStatusCode)
+            {
+                ErrorResponseDto? apiErr = await res.Content.ReadFromJsonAsync<ErrorResponseDto>();
+                _skuError = apiErr?.Message ?? "Die Anfrage ist fehlgeschlagen.";
+                Toast.Error(_skuError);
+                return;
+            }
+
+            _sku = await res.Content.ReadFromJsonAsync<SkuResponseDto>(ApiJsonOptions);
+        }
+        catch (HttpRequestException)
+        {
+            _skuError = "Die API konnte nicht erreicht werden.";
+            Toast.Error(_skuError);
+        }
+        catch (OperationCanceledException)
+        {
+            _skuError = "Die Anfrage wurde abgebrochen oder hat zu lange gedauert.";
+            Toast.Error(_skuError);
+        }
+        catch (Exception)
+        {
+            _skuError = "Bei der Verarbeitung der Anfrage ist ein unerwarteter Fehler aufgetreten.";
+            Toast.Error(_skuError);
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+}
+
+<PageTitle>SKU-Detail</PageTitle>
+<Toaster RichColors="true" CloseButton="true" />
+
+<main class="mx-auto w-full min-w-0 max-w-7xl space-y-6 p-5 sm:p-8">
+    <PortalHeading Section="SKU-Detail" Title="Eine Variante. Alle Bestände." Icon="barcode"
+                   Tenant="@Session.Tenant?.Name">
+        <a href="/articles" class="btn btn-sm btn-outline">
+            <LucideIcon Name="arrow-left" Size="16" aria-hidden="true" /> Zur Artikelliste
+        </a>
+    </PortalHeading>
+
+    <p class="sr-only" role="status">@(_isLoading ? "SKU wird geladen." : "")</p>
+    @if (!string.IsNullOrWhiteSpace(_skuError))
+    {
+        <div class="alert alert-error alert-soft" role="alert">
+            <LucideIcon Name="circle-alert" Size="20" aria-hidden="true" /> @_skuError
+        </div>
+    }
+    else if (!_isLoading && _sku is null)
+    {
+        <div class="alert" role="status">
+            <LucideIcon Name="package-open" Size="20" aria-hidden="true" /> Keine Artikeldaten vorhanden.
+        </div>
+    }
+    else
+    {
+        <div class="grid items-start gap-6 xl:grid-cols-5" aria-busy="@(_isLoading ? "true" : "false")">
+            <DataPanel Title="Variantendetails" Icon="package" Class="xl:col-span-3">
+                <dl class="grid gap-x-8 gap-y-5 sm:grid-cols-2">
+                    <DetailField Label="Artikel" Loading="@_isLoading">
+                        <a class="link link-primary" href="/article-detail/@_sku?.ArticleNumber">
+                            @_sku?.ArticleNumber · @_sku?.ArticleName
+                        </a>
+                    </DetailField>
+                    <DetailField Label="SKU" Loading="@_isLoading"><span class="font-mono">@_sku?.Sku</span></DetailField>
+                    <DetailField Label="Farbe" Loading="@_isLoading">
+                        @if (_sku?.Color is { } color)
+                        {
+                            <span class="badge badge-ghost gap-2">
+                                <span class="size-3 rounded-full ring-1 ring-base-content/20" aria-hidden="true"
+                                      style="@($"background-color: rgb({color.Red}, {color.Green}, {color.Blue})")"></span>
+                                @color.Name
+                            </span>
+                            <span class="mt-1 block text-xs text-base-content/70">ID @color.Id · RGB @color.Red / @color.Green /
+                                @color.Blue</span>
+                            }
+                        </DetailField>
+                        <DetailField Label="Lieferantenfarbe" Loading="@_isLoading">@(_sku?.SupplierColor ?? "—")</DetailField>
+                        <DetailField Label="Form" Loading="@_isLoading">@(_sku?.Fit ?? "—")</DetailField>
+                        <DetailField Label="Größe" Loading="@_isLoading">@_sku?.Size</DetailField>
+                        <DetailField Label="Führende Farbe" Loading="@_isLoading">
+                            <span
+                                class="badge badge-sm @(_sku?.IsLeadingColor == true ? "badge-success badge-soft" : "badge-ghost")">
+                                @(_sku?.IsLeadingColor == true ? "Ja" : "Nein")
+                            </span>
+                        </DetailField>
+                        <DetailField Label="Gelöscht" Loading="@_isLoading">
+                            <span class="badge badge-sm @(_sku?.IsDeleted == true ? "badge-error badge-soft" : "badge-ghost")">
+                                @(_sku?.IsDeleted == true ? "Ja" : "Nein")
+                            </span>
+                        </DetailField>
+                        <DetailField Label="Geändert (UTC)" Loading="@_isLoading">
+                            @_sku?.ModifiedAt.ToUniversalTime().ToString("dd.MM.yyyy HH:mm:ss")
+                        </DetailField>
+                    </dl>
+                </DataPanel>
+
+                <div class="min-w-0 space-y-6 xl:col-span-2">
+                    <DataPanel Title="Verkaufspreise" Icon="tags">
+                        <dl class="grid gap-4 sm:grid-cols-2">
+                            <DetailField Label="VK-Preis" Loading="@_isLoading">
+                                <span
+                                    class="tabular-nums @(_sku?.SalesPriceReduced.HasValue == true ? "text-base-content/65 line-through" : "")">
+                                    @_sku?.SalesPrice €
+                                </span>
+                            </DetailField>
+                            <DetailField Label="Reduzierter VK-Preis" Loading="@_isLoading">
+                                @(_sku?.SalesPriceReduced is { } reduced ? $"{reduced} €" : "—")
+                            </DetailField>
+                        </dl>
+                    </DataPanel>
+                    <DataPanel Title="Mengen nach Lieferstatus" Icon="boxes">
+                        <div class="stat rounded-box bg-base-200/70 p-4">
+                            <p class="stat-title">Gesamtbestand · alle Filialen</p>
+                            <p class="stat-value mt-1 text-3xl tabular-nums">
+                                @if (_isLoading)
+                                {
+                                    <span class="skeleton block h-9 w-20 motion-reduce:animate-none" aria-hidden="true"></span>
+                                }
+                                else
+                                {
+                                    @_sku?.Stock
+                                }
+                            </p>
+                        </div>
+                        <ul class="list">
+                            @foreach (var (label, status, quantity) in new[]
+                            {
+                            ("Sofort lieferbar", "status-success", _sku?.Quantities.AvailableNow),
+                            ("Kurzfristig lieferbar", "status-warning", _sku?.Quantities.AvailableSoon),
+                            ("Nicht lieferbar", "status-neutral", _sku?.Quantities.NotAvailable)
+                        })
+                            {
+                                <li class="list-row items-center gap-3 px-0">
+                                    <span class="status @status" aria-hidden="true"></span>
+                                    <span>@label</span>
+                                    @if (_isLoading)
+                                    {
+                                        <span class="skeleton h-5 w-8 motion-reduce:animate-none" aria-hidden="true"></span>
+                                    }
+                                    else
+                                    {
+                                        <strong class="tabular-nums">@quantity</strong>
+                                    }
+                                </li>
+                            }
+                        </ul>
+                    </DataPanel>
+                </div>
+            </div>
+
+            <DataPanel Title="Filialbestände" Icon="store">
+                <DataTable Caption="Bestände dieser SKU je Filiale" Headings="@(new[] { "Filiale", "Name", "Bestand" })"
+                           Loading="@_isLoading" HasRows="@(_sku?.BranchStock.Count > 0)" SkeletonRows="3"
+                           EmptyMessage="Keine Filialbestände vorhanden.">
+                    @foreach (var branch in _sku?.BranchStock ?? [])
+                    {
+                        <tr class="hover:bg-base-200/70">
+                            <td class="tabular-nums">@branch.Branch</td>
+                            <td>@branch.BranchName</td>
+                            <td class="font-semibold tabular-nums">@branch.Stock</td>
+                        </tr>
+                    }
+                </DataTable>
+                <div class="flex flex-wrap items-center justify-between gap-3">
+                    @if (_isLoading)
+                    {
+                        <span class="skeleton h-5 w-40 motion-reduce:animate-none" aria-hidden="true"></span>
+                    }
+                    else if (_sku?.BranchStock.Count > 0)
+                    {
+                        <p class="min-w-0 wrap-break-word text-sm text-base-content/70">
+                            @(string.Join(" + ", _sku.BranchStock.Select(row => row.Stock))) =
+                            <strong class="text-base-content">@_sku.BranchStock.Sum(row => row.Stock) Gesamtbestand</strong>
+                        </p>
+                    }
+                    <a class="btn btn-sm btn-outline"
+                       href="@($"/branch-stock?sku={Uri.EscapeDataString(_sku?.Sku ?? SkuNumber)}")">
+                        Alle Filialbestände
+                        <LucideIcon Name="arrow-right" Size="16" aria-hidden="true" />
+                    </a>
+                </div>
+            </DataPanel>
+        }
+    </main>

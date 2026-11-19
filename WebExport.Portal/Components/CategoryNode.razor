@@ -1,0 +1,57 @@
+@if (Level == 3)
+{
+    <div class="flex flex-wrap items-center justify-between gap-2 rounded-field bg-base-200/60 p-2">
+        <a href="@ArticlesUrl" class="link link-hover min-w-0 wrap-anywhere">
+            <span class="font-semibold">@Category.Name</span>
+            <span class="block text-xs text-base-content/70">#@Category.Number · Rang @Category.Rank</span>
+        </a>
+        @DetailButton
+    </div>
+}
+else
+{
+    <details class="collapse collapse-arrow border border-base-content/10 bg-base-100/60">
+        <summary class="collapse-title flex min-h-0 flex-wrap items-center gap-2 py-3 ps-3 pe-9">
+            <LucideIcon Name="folder" Size="17" Class="shrink-0 text-primary" aria-hidden="true" />
+            <span class="min-w-0 wrap-anywhere font-semibold">@Category.Name</span>
+            <span class="badge badge-ghost badge-sm">#@Category.Number · Rang @Category.Rank</span>
+        </summary>
+        <div class="collapse-content space-y-2 px-2 sm:px-3">
+            <div class="flex flex-wrap items-center gap-2">
+                <a href="@ArticlesUrl" class="btn btn-sm btn-soft" aria-label="@($"Artikel ansehen: {Category.Name}")">
+                    <LucideIcon Name="package-search" Size="15" aria-hidden="true" /> Artikel ansehen
+                </a>
+                @DetailButton
+            </div>
+            @foreach (var child in Children)
+            {
+                <CategoryNode @key="child.Number" Category="child" Groups="Groups" Level="@(Level + 1)" ActiveOnly="ActiveOnly"
+                              SelectedNumber="SelectedNumber" OnSelect="OnSelect" />
+            }
+        </div>
+    </details>
+}
+
+@code {
+    [Parameter, EditorRequired] public CategoryResponseDto Category { get; set; } = default!;
+    [Parameter, EditorRequired]
+    public List<(int? ParentNumber, CategoryResponseDto[] Items)> Groups { get; set; } =
+default!;
+    [Parameter] public int Level { get; set; } = 1;
+    [Parameter] public bool ActiveOnly { get; set; }
+    [Parameter] public int? SelectedNumber { get; set; }
+    [Parameter] public EventCallback<int> OnSelect { get; set; }
+
+    private string ArticlesUrl => $"/articles?category={Category.Number}";
+
+    private IEnumerable<CategoryResponseDto> Children =>
+        (Groups.FirstOrDefault(group => group.ParentNumber == Category.Number).Items ?? [])
+            .Where(child => !ActiveOnly || child.IsActive);
+
+    private RenderFragment DetailButton => @<button type="button" aria-controls="category-detail"
+                                                aria-label="@($"Details zu {Category.Name}")"
+                                                class="btn btn-sm @(SelectedNumber == Category.Number ? "btn-primary" : "btn-ghost")"
+                                                @onclick="() => OnSelect.InvokeAsync(Category.Number)">
+        <LucideIcon Name="info" Size="15" aria-hidden="true" /> Details
+    </button>;
+}

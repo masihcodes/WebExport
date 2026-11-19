@@ -1,0 +1,77 @@
+@using System.Globalization
+
+<DataPanel Title="Qualität der Artikeldaten" Icon="clipboard-check" Class="h-full">
+    @if (!string.IsNullOrWhiteSpace(Error))
+    {
+        <div class="alert alert-error alert-soft" role="alert">
+            <LucideIcon Name="circle-alert" Size="18" aria-hidden="true" /> @Error
+        </div>
+    }
+    else if (Quality is null)
+    {
+        <div class="space-y-5" aria-busy="true" aria-label="Qualitätsdaten werden geladen">
+            @for (var i = 0; i < 3; i++)
+            {
+                <div class="space-y-2" aria-hidden="true">
+                    <div class="skeleton h-4 w-2/5 motion-reduce:animate-none"></div>
+                    <div class="skeleton h-2 w-full motion-reduce:animate-none"></div>
+                </div>
+            }
+        </div>
+    }
+    else
+    {
+        (string Label, int Count)[] measures =
+        {
+            ("Ohne Beschreibung", Quality.ArticlesWithoutDescriptionCount),
+            ("Ohne Artikelbild", Quality.ArticlesWithoutImageCount),
+            ("Ohne aktive Kategorie", Quality.ArticlesWithoutActiveCategoryCount)
+        };
+        var largestCount = measures.Max(item => item.Count);
+        var articleCount = Summary?.ArticleCount ?? 0;
+        var hasDenominator = articleCount > 0 && articleCount >= largestCount;
+
+        @if (Summary is { ArticleCount: 0 } && largestCount == 0)
+        {
+            <p class="text-sm text-base-content/70">Keine Artikel zur Prüfung vorhanden.</p>
+        }
+        else
+        {
+            <p class="text-sm text-base-content/70">
+                @(hasDenominator
+                    ? $"Anteil am Sortiment ({articleCount.ToString("N0", German)} Artikel)"
+                    : "Anzahl betroffener Artikel, skaliert am höchsten Einzelwert.")
+            </p>
+            <dl class="space-y-5">
+                @foreach (var (label, count) in measures)
+                {
+                    <div class="grid grid-cols-[1fr_auto] items-baseline gap-x-2 gap-y-2">
+                        <dt class="font-medium">@label</dt>
+                        <dd class="text-end tabular-nums">
+                            <strong>@count.ToString("N0", German)</strong>
+                            @if (hasDenominator)
+                            {
+                                <span class="ms-1 text-xs text-base-content/70">@((count / (double)articleCount).ToString("0.# %", German))</span>
+                            }
+                        </dd>
+                        <dd class="col-span-2 flex" aria-hidden="true">
+                            <progress class="progress progress-warning h-2 w-full" value="@count"
+                                      max="@(hasDenominator ? articleCount : Math.Max(1, largestCount))"></progress>
+                        </dd>
+                    </div>
+                }
+            </dl>
+            <p class="mt-auto border-t border-base-content/10 pt-3 text-xs text-base-content/70">
+                Ein Artikel kann in mehreren Prüfungen auffallen.
+            </p>
+        }
+    }
+</DataPanel>
+
+@code {
+    [Parameter] public DashboardContentQualityDto? Quality { get; set; }
+    [Parameter] public DashboardSummaryDto? Summary { get; set; }
+    [Parameter] public string? Error { get; set; }
+
+    private static readonly CultureInfo German = CultureInfo.GetCultureInfo("de-DE");
+}

@@ -1,0 +1,184 @@
+@inherits LayoutComponentBase
+@inject Session Session
+@inject NavigationManager Navi
+@implements IDisposable
+
+
+@code {
+    private static readonly (string Href, string Icon, string Label)[] NavigationItems =
+    [
+        ("/dashboard", "layout-dashboard", "Dashboard"),
+        ("/status", "activity", "Status"),
+        ("/articles", "package", "Artikel"),
+        ("/prices-stock", "tags", "Preise & Bestände"),
+        ("/branch-stock", "store", "Filialbestände"),
+        ("/categories", "folder-tree", "Kategorien"),
+        ("/master-data", "database", "Stammdaten")
+    ];
+
+    private static readonly (string Label, string Value)[] Themes =
+        [
+        ("Emerald", "emerald"),
+        ("Aqua", "dark"),
+        ("Valentine", "valentine"),
+        ("Lofi", "lofi"),
+        ("Luxury", "luxury"),
+        ("Autumn", "autumn"),
+        ("Night", "night"),
+        ("Dim", "dim"),
+        ("Caramellatte", "caramellatte"),
+        ("Abyss", "abyss"),
+        ("Black", "black")
+    ];
+
+    private bool _drawerOpen = true;
+    private void ToggleDrawer() => _drawerOpen = !_drawerOpen;
+    private void CloseDrawer() => _drawerOpen = false;
+
+    private void ChangeAsync() => _ = InvokeAsync(StateHasChanged);
+    protected override void OnInitialized() => Session.Changed += ChangeAsync;
+    public void Dispose() => Session.Changed -= ChangeAsync;
+
+    private void HandleLogout()
+    {
+        Session.Clear();
+        Navi.NavigateTo(uri: "/login");
+    }
+}
+
+
+<div class="drawer isolate min-h-dvh bg-base-200 text-base-content lg:drawer-open">
+    <img src="1.webp" class="pointer-events-none fixed inset-0 -z-20 h-dvh w-full object-cover" alt="" />
+    <div
+        class="pointer-events-none fixed inset-0 -z-10 bg-linear-to-br from-base-100/85 via-base-100/70 to-base-200/90">
+    </div>
+
+    <input id="workspace-drawer" type="checkbox" class="drawer-toggle" @bind="_drawerOpen" />
+
+    <div class="drawer-content flex flex-col min-h-dvh">
+        <header class="sticky top-0 z-50 px-5 pt-5 sm:px-8 sm:pt-8">
+            <div
+                class="navbar glass min-h-16 gap-3 rounded-box border border-base-100 bg-base-300/10 px-3 backdrop-blur-xs shadow sm:px-4">
+                <button type="button" class="btn btn-square btn-ghost" @onclick="ToggleDrawer">
+                    <LucideIcon Name="@(_drawerOpen ? "panel-left-close" : "panel-left-open")" Size="20" />
+                </button>
+
+                <nav class="breadcrumbs min-w-0 flex-1 text-sm">
+                    <ul>
+                        <li><a href="/">WebExport</a></li>
+                        <li><span class="font-semibold">Workspace</span></li>
+                    </ul>
+                </nav>
+
+                <div class="dropdown dropdown-end">
+                    <div tabindex="0" role="button"
+                         class="badge badge-outline gap-2 border-base-content/15 text-base-content/65 md:inline-flex cursor-pointer">
+                        <LucideIcon Name="palette" Size="14" /> Farbschema
+                        <LucideIcon Name="chevron-down" Size="14" />
+                    </div>
+                    <ul tabindex="0"
+                        class="dropdown-content menu mt-2 w-52 max-h-[min(24rem,calc(100dvh-8rem))] flex-nowrap overflow-y-auto rounded-box bg-base-100 p-2 shadow">
+                        @foreach (var theme in Themes)
+                        {
+                            <li>
+                                <input type="radio" name="theme-dropdown"
+                                       class="theme-controller w-full btn btn-sm btn-block btn-ghost justify-start"
+                                       aria-label="@theme.Label" value="@theme.Value" />
+                            </li>
+                        }
+                    </ul>
+                </div>
+
+                <details class="dropdown dropdown-end">
+                    <summary class="btn btn-ghost gap-2 px-2">
+                        <LucideIcon Name="building-2" Size="19"
+                                    class="flex size-9 items-center justify-center rounded-field text-primary" />
+                        <span class="max-w-40 truncate sm:block">@(Session.Tenant?.Name ?? "Mandant")</span>
+                        <LucideIcon Name="chevron-down" Size="15" />
+                    </summary>
+                    <div class="dropdown-content card z-50 mt-3 w-64 border border-base-content/10 bg-base-100 shadow">
+                        <div class="card-body gap-3 p-4">
+                            <p class="text-xs font-medium tracking-widest text-base-content/60">MANDANT</p>
+                            @if (Session.Tenant is { } tenant)
+                            {
+                                <p class="wrap-break-word font-semibold">@tenant.Name</p>
+                                <p class="text-xs text-base-content/65">Nr. @tenant.Number · @tenant.BranchCount Filialen
+                                </p>
+                            }
+                            else
+                            {
+                                <p class="text-sm text-base-content/65">Noch keine Mandantendaten geladen.</p>
+                            }
+                            <ul class="menu w-full gap-1 border-t border-base-content/10 px-0 pt-3">
+                                <li><a href="/">
+                                    <LucideIcon Name="house" Size="18" /> Startseite
+                                </a></li>
+                                <li><button type="button" @onclick="HandleLogout">
+                                    <LucideIcon Name="log-out" Size="18" /> Abmelden
+                                </button></li>
+                            </ul>
+                        </div>
+                    </div>
+                </details>
+            </div>
+        </header>
+
+        <main class="min-w-0 flex-1">
+            @Body
+        </main>
+
+        <footer
+            class="flex flex-wrap items-center justify-between gap-3 px-5 pb-5 pt-3 text-xs text-base-content/60 sm:px-8 sm:pb-8">
+            <span>HILTES Software GmbH <span class="mx-2 opacity-40">/</span> WebExport API</span>
+        </footer>
+    </div>
+
+    <aside id="workspace-navigation" class="drawer-side z-40 overflow-visible">
+        <label for="workspace-drawer" class="drawer-overlay"></label>
+        <div
+            class="glass flex h-dvh w-90 flex-col border-r border-base-100 bg-base-300/10 backdrop-blur-xs shadow lg:is-drawer-close:w-20">
+            <div class="flex h-24 shrink-0 items-center gap-3 px-5">
+                <a href="/status" class="flex min-w-0 items-center gap-3">
+                    <span
+                        class="flex size-10 shrink-0 items-center justify-center rounded-field bg-primary text-primary-content">
+                        <LucideIcon Name="boxes" Size="22" />
+                    </span>
+                    <span class="min-w-0 lg:is-drawer-close:hidden">
+                        <span class="block font-semibold tracking-tight">WebExport <span
+                            class="font-normal opacity-50">API</span></span>
+                            <span class="mt-1 block text-xs text-base-content/60">Ihr Sortiment. Ein Überblick.</span>
+                        </span>
+                    </a>
+                    <button type="button" class="btn btn-square btn-ghost btn-sm ml-auto lg:hidden" @onclick="CloseDrawer">
+                        <LucideIcon Name="x" Size="18" />
+                    </button>
+                </div>
+
+                <nav class="min-h-0 flex-1 overflow-y-auto p-3">
+                    <ul class="menu w-full gap-2 p-0">
+                        <li class="menu-title px-3 text-xs tracking-widest lg:is-drawer-close:hidden">DATENPORTAL</li>
+                        @foreach (var item in NavigationItems)
+                        {
+                            <li>
+                                <NavLink href="@item.Href" ActiveClass="menu-active" @onclick="CloseDrawer" title="@item.Label"
+                                         data-tip="@item.Label"
+                                         class="flex min-h-12 items-center gap-3 rounded-field lg:is-drawer-close:justify-center">
+                                    <LucideIcon Name="@item.Icon" Size="20" />
+                                    <span class="lg:is-drawer-close:hidden">@item.Label</span>
+                                </NavLink>
+                            </li>
+                        }
+                    </ul>
+                </nav>
+
+                <div class="shrink-0 border-t border-base-content/10 p-3">
+                    <p class="px-3 pb-3 pt-1 text-xs text-base-content/60 lg:is-drawer-close:hidden">Alles an einem Ort.</p>
+                    <button type="button" @onclick="HandleLogout"
+                            class="btn btn-ghost w-full justify-start gap-3 lg:is-drawer-close:justify-center">
+                        <LucideIcon Name="log-out" Size="20" Class="shrink-0" />
+                        <span class="lg:is-drawer-close:hidden">Abmelden</span>
+                    </button>
+                </div>
+            </div>
+        </aside>
+    </div>

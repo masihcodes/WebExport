@@ -1,0 +1,106 @@
+@inherits LayoutComponentBase
+
+<div class="relative isolate flex min-h-dvh flex-col bg-base-200 text-base-content">
+    <img src="HQ.webp" alt="" class="pointer-events-none fixed inset-0 h-dvh w-full object-cover" />
+    <div class="pointer-events-none fixed inset-0 bg-linear-to-br from-base-100/80 via-base-100/40 to-base-200/60">
+    </div>
+
+    <header class="z-50 mx-auto w-full max-w-7xl px-4 pt-4 sm:px-8 sm:pt-8">
+        <div
+            class="navbar glass justify-between gap-2 rounded-box border border-base-content/10 bg-base-300/10 px-3 shadow backdrop-blur-xs sm:px-4">
+            <a href="/" class="btn btn-ghost gap-3 px-2 text-base tracking-tight">
+                <span class="grid size-8 shrink-0 place-items-center rounded-field bg-primary text-primary-content">
+                    <LucideIcon Name="boxes" Size="18" />
+                </span>
+                <span>WebExport <span class="font-normal opacity-65">API</span></span>
+            </a>
+
+            <div class="dropdown dropdown-end">
+                <div tabindex="0" role="button"
+                     class="badge badge-outline hidden gap-2 border-base-content/15 text-base-content/65 md:inline-flex cursor-pointer">
+                    <LucideIcon Name="palette" Size="14" /> Farbschema
+                    <LucideIcon Name="chevron-down" Size="14" />
+                </div>
+                <ul tabindex="-1" class="dropdown-content menu mt-2 w-52 max-h-[min(24rem,calc(100dvh-8rem))]
+                    flex-nowrap overflow-y-auto rounded-box bg-base-100 p-2 shadow">
+                    <li>
+                        <input type="radio" name="theme-dropdown"
+                               class="theme-controller w-full btn btn-sm btn-block btn-ghost justify-start"
+                               aria-label="Emerald" value="emerald" />
+                    </li>
+                    <li>
+                        <input type="radio" name="theme-dropdown"
+                               class="theme-controller w-full btn btn-sm btn-block btn-ghost justify-start"
+                               aria-label="Dark" value="dark" />
+                    </li>
+                    <li>
+                        <input type="radio" name="theme-dropdown"
+                               class="theme-controller w-full btn btn-sm btn-block btn-ghost justify-start"
+                               aria-label="Valentine" value="valentine" />
+                    </li>
+
+                    <li>
+                        <input type="radio" name="theme-dropdown"
+                               class="theme-controller w-full btn btn-sm btn-block btn-ghost justify-start"
+                               aria-label="Lofi" value="lofi" />
+                    </li>
+    
+
+                    <li>
+                        <input type="radio" name="theme-dropdown"
+                               class="theme-controller w-full btn btn-sm btn-block btn-ghost justify-start"
+                               aria-label="Luxury" value="luxury" />
+                    </li>
+   
+                    <li>
+                        <input type="radio" name="theme-dropdown"
+                               class="theme-controller w-full btn btn-sm btn-block btn-ghost justify-start"
+                               aria-label="Autumn" value="autumn" />
+                    </li>
+    
+                    <li>
+                        <input type="radio" name="theme-dropdown"
+                               class="theme-controller w-full btn btn-sm btn-block btn-ghost justify-start"
+                               aria-label="Night" value="night" />
+                    </li>
+    
+                    <li>
+                        <input type="radio" name="theme-dropdown"
+                               class="theme-controller w-full btn btn-sm btn-block btn-ghost justify-start"
+                               aria-label="Dim" value="dim" />
+                    </li>
+    
+                    <li>
+                        <input type="radio" name="theme-dropdown"
+                               class="theme-controller w-full btn btn-sm btn-block btn-ghost justify-start"
+                               aria-label="Caramellatte" value="caramellatte" />
+                    </li>
+                    <li>
+                        <input type="radio" name="theme-dropdown"
+                               class="theme-controller w-full btn btn-sm btn-block btn-ghost justify-start"
+                               aria-label="Abyss" value="abyss" />
+                    </li>
+                    <li>
+                        <input type="radio" name="theme-dropdown"
+                               class="theme-controller w-full btn btn-sm btn-block btn-ghost justify-start"
+                               aria-label="Black" value="black" />
+                    </li>
+                </ul>
+            </div>
+
+            @* <ThemePicker /> *@
+        </div>
+    </header>
+
+    <main class="mx-auto flex w-full max-w-7xl flex-1 items-center px-4 py-6 sm:px-8 sm:py-10">
+        @Body
+    </main>
+
+    <footer
+        class="mx-auto flex w-full max-w-7xl flex-wrap items-center justify-between gap-3 px-4 pb-5 text-xs text-base-content/70 sm:px-8 sm:pb-8">
+        <span>HILTES Software GmbH</span>
+        <a class="link link-hover" href="https://www.hiltes.com/" target="_blank">
+            Foto: HILTES HQ
+        </a>
+    </footer>
+</div>

@@ -1,0 +1,464 @@
+@page "/master-data"
+@layout PortalLayout
+
+@inject HttpClient Http
+@inject NavigationManager Navi
+@inject Session Session
+
+@inject ToastService Toast
+
+
+@code
+{
+
+    private static readonly JsonSerializerOptions ApiJsonOptions = new JsonSerializerOptions(JsonSerializerDefaults.Web)
+    {
+        Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase) }
+    };
+  
+
+    private ColorDto[]? _colors;
+    private SizeResponseDto[]? _sizes;
+    private BranchResponseDto[]? _branches;
+    private AttributeTypeResponseDto[]? _attributeTypes;
+    private DeliveryStatusResponseDto[]? _deliveries;
+
+    private bool _isLoading;
+    private string? _error;
+
+    private MasterDataTab _activeTab = MasterDataTab.Colors;
+
+    private enum MasterDataTab
+    {
+        Colors,
+        Sizes,
+        Branches,
+        Attributes,
+        Delivery
+    }
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!Session.IsAuthenticated || string.IsNullOrWhiteSpace(Session.ApiKey))
+        {
+            Session.Clear();
+            Navi.NavigateTo(uri: "/login");
+            return;
+        }
+
+        await LoadColors();
+    }
+
+    private async Task SelectTabAsync(MasterDataTab tab)
+    {
+        if (_isLoading) return;
+
+        _activeTab = tab;
+        _error = null;
+
+        switch (tab)
+        {
+            case MasterDataTab.Colors when _colors is null:
+                await LoadColors();
+                break;
+            case MasterDataTab.Sizes when _sizes is null:
+                await LoadSizes();
+                break;
+            case MasterDataTab.Branches when _branches is null:
+                await LoadBranches();
+                break;
+            case MasterDataTab.Attributes when _attributeTypes is null:
+                await LoadAttributes();
+                break;
+            case MasterDataTab.Delivery when _deliveries is null:
+                await LoadDeliveryStatuses();
+                break;
+        }
+    }
+
+    private async Task LoadColors()
+    {
+        if (_isLoading) return;
+
+        _isLoading = true;
+        _error = null;
+        _colors = null;
+        try
+        {
+            using var res = new HttpRequestMessage(HttpMethod.Get, "api/v1/colors");
+            res.Headers.Add(name: "X-API-KEY", Session.ApiKey);
+            res.Headers.Authorization = new AuthenticationHeaderValue("Bearer", Session.Current?.AccessToken);
+
+            using var response = await Http.SendAsync(res);
+
+            if (response.StatusCode == HttpStatusCode.Unauthorized)
+            {
+                Session.Clear();
+                Navi.NavigateTo(uri: "/login");
+                return;
+            }
+
+            if (!response.IsSuccessStatusCode)
+            {
+                ErrorResponseDto? apiError = await response.Content.ReadFromJsonAsync<ErrorResponseDto>();
+                _error = apiError?.Message ?? "Die Anfrage ist fehlgeschlagen.";
+                Toast.Error(_error);
+                return;
+            }
+
+            _colors = await response.Content.ReadFromJsonAsync<ColorDto[]>(ApiJsonOptions) ?? [];
+        }
+        catch (Exception)
+        {
+            _error = "Die Stammdaten konnten nicht geladen werden.";
+            Toast.Error(_error);
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task LoadSizes()
+    {
+        if (_isLoading) return;
+
+        _isLoading = true;
+        _error = null;
+        _sizes = null;
+        try
+        {
+            using var res = new HttpRequestMessage(HttpMethod.Get, "api/v1/sizes");
+            res.Headers.Add(name: "X-API-KEY", Session.ApiKey);
+            res.Headers.Authorization = new AuthenticationHeaderValue("Bearer", Session.Current?.AccessToken);
+
+            using var response = await Http.SendAsync(res);
+
+            if (response.StatusCode == HttpStatusCode.Unauthorized)
+            {
+                Session.Clear();
+                Navi.NavigateTo(uri: "/login");
+                return;
+            }
+
+            if (!response.IsSuccessStatusCode)
+            {
+                ErrorResponseDto? apiError = await response.Content.ReadFromJsonAsync<ErrorResponseDto>();
+                _error = apiError?.Message ?? "Die Anfrage ist fehlgeschlagen.";
+                Toast.Error(_error);
+                return;
+            }
+
+            _sizes = await response.Content.ReadFromJsonAsync<SizeResponseDto[]>(ApiJsonOptions) ?? [];
+        }
+        catch (Exception)
+        {
+            _error = "Die Stammdaten konnten nicht geladen werden.";
+            Toast.Error(_error);
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task LoadBranches()
+    {
+        if (_isLoading) return;
+
+        _isLoading = true;
+        _error = null;
+        _branches = null;
+        try
+        {
+            using var res = new HttpRequestMessage(HttpMethod.Get, "api/v1/branches");
+            res.Headers.Add(name: "X-API-KEY", Session.ApiKey);
+            res.Headers.Authorization = new AuthenticationHeaderValue("Bearer", Session.Current?.AccessToken);
+
+            using var response = await Http.SendAsync(res);
+
+            if (response.StatusCode == HttpStatusCode.Unauthorized)
+            {
+                Session.Clear();
+                Navi.NavigateTo(uri: "/login");
+                return;
+            }
+
+            if (!response.IsSuccessStatusCode)
+            {
+                ErrorResponseDto? apiError = await response.Content.ReadFromJsonAsync<ErrorResponseDto>();
+                _error = apiError?.Message ?? "Die Anfrage ist fehlgeschlagen.";
+                Toast.Error(_error);
+                return;
+            }
+
+            _branches = await response.Content.ReadFromJsonAsync<BranchResponseDto[]>(ApiJsonOptions) ?? [];
+        }
+        catch (Exception)
+        {
+            _error = "Die Stammdaten konnten nicht geladen werden.";
+            Toast.Error(_error);
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task LoadAttributes()
+    {
+        if (_isLoading) return;
+
+        _isLoading = true;
+        _error = null;
+        _attributeTypes = null;
+        try
+        {
+            using var res = new HttpRequestMessage(HttpMethod.Get, "api/v1/attribute-types");
+            res.Headers.Add(name: "X-API-KEY", Session.ApiKey);
+            res.Headers.Authorization = new AuthenticationHeaderValue("Bearer", Session.Current?.AccessToken);
+
+            using var response = await Http.SendAsync(res);
+
+            if (response.StatusCode == HttpStatusCode.Unauthorized)
+            {
+                Session.Clear();
+                Navi.NavigateTo(uri: "/login");
+                return;
+            }
+
+            if (!response.IsSuccessStatusCode)
+            {
+                ErrorResponseDto? apiError = await response.Content.ReadFromJsonAsync<ErrorResponseDto>();
+                _error = apiError?.Message ?? "Die Anfrage ist fehlgeschlagen.";
+                Toast.Error(_error);
+                return;
+            }
+
+            _attributeTypes = await response.Content.ReadFromJsonAsync<AttributeTypeResponseDto[]>(ApiJsonOptions) ?? [];
+        }
+        catch (Exception)
+        {
+            _error = "Die Stammdaten konnten nicht geladen werden.";
+            Toast.Error(_error);
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task LoadDeliveryStatuses()
+    {
+        if (_isLoading) return;
+
+        _isLoading = true;
+        _error = null;
+        _deliveries = null;
+        try
+        {
+            using var res = new HttpRequestMessage(HttpMethod.Get, "api/v1/delivery-status");
+            res.Headers.Add(name: "X-API-KEY", Session.ApiKey);
+            res.Headers.Authorization = new AuthenticationHeaderValue("Bearer", Session.Current?.AccessToken);
+
+            using var response = await Http.SendAsync(res);
+
+            if (response.StatusCode == HttpStatusCode.Unauthorized)
+            {
+                Session.Clear();
+                Navi.NavigateTo(uri: "/login");
+                return;
+            }
+
+            if (!response.IsSuccessStatusCode)
+            {
+                ErrorResponseDto? apiError = await response.Content.ReadFromJsonAsync<ErrorResponseDto>();
+                _error = apiError?.Message ?? "Die Anfrage ist fehlgeschlagen.";
+                Toast.Error(_error);
+                return;
+            }
+
+            _deliveries = await response.Content.ReadFromJsonAsync<DeliveryStatusResponseDto[]>(ApiJsonOptions) ?? [];
+        }
+        catch (Exception)
+        {
+            _error = "Die Stammdaten konnten nicht geladen werden.";
+            Toast.Error(_error);
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+}
+
+
+<PageTitle>Stammdaten</PageTitle>
+<Toaster RichColors="true" CloseButton="true" />
+
+<main class="mx-auto w-full min-w-0 max-w-7xl space-y-6 p-5 sm:p-8">
+    <PortalHeading Section="Stammdaten" Title="Die Basis Ihrer Artikeldaten" Icon="database"
+                   Tenant="@Session.Tenant?.Name" />
+
+    <DataPanel Title="Stammdaten durchsuchen" Icon="database">
+        @{
+            (MasterDataTab Value, string Label, string Icon, int Count)[] tabs =
+            [
+                (MasterDataTab.Colors, "Farben", "palette", _colors?.Length ?? 0),
+                (MasterDataTab.Sizes, "Größen", "ruler", _sizes?.Length ?? 0),
+                (MasterDataTab.Branches, "Filialen", "store", _branches?.Length ?? 0),
+                (MasterDataTab.Attributes, "Merkmalsarten", "list-filter", _attributeTypes?.Length ?? 0),
+                (MasterDataTab.Delivery, "Lieferstatus", "truck", _deliveries?.Length ?? 0)
+            ];
+            var active = tabs.First(tab => tab.Value == _activeTab);
+        }
+        <div role="group" aria-label="Stammdatenbereiche" class="tabs tabs-box w-fit max-w-full gap-1">
+            @foreach (var tab in tabs)
+            {
+                <button type="button" id="master-tab-@tab.Value" aria-controls="master-data-panel"
+                        class="tab gap-2 @(tab.Value == _activeTab ? "tab-active" : "")"
+                        aria-pressed="@(tab.Value == _activeTab ? "true" : "false")" disabled="@_isLoading"
+                        @onclick="() => SelectTabAsync(tab.Value)">
+                    <LucideIcon Name="@tab.Icon" Size="16" aria-hidden="true" /> @tab.Label
+                </button>
+            }
+        </div>
+
+        <span class="sr-only" role="status">@(_isLoading ? "Stammdaten werden geladen …" : "")</span>
+        <section id="master-data-panel" aria-labelledby="master-tab-@active.Value"
+                 aria-busy="@(_isLoading ? "true" : "false")" class="min-w-0">
+            @if (!string.IsNullOrWhiteSpace(_error))
+            {
+                <div class="alert alert-error alert-soft" role="alert">
+                    <LucideIcon Name="circle-alert" Size="20" aria-hidden="true" /> <span>@_error</span>
+                </div>
+            }
+            else if (!_isLoading && active.Count == 0)
+            {
+                <div class="alert alert-soft" role="status">
+                    <LucideIcon Name="inbox" Size="20" aria-hidden="true" /> <span>Keine Einträge gefunden.</span>
+                </div>
+            }
+            else if (_activeTab == MasterDataTab.Colors)
+            {
+                <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                    @if (_isLoading)
+                    {
+                        @for (var tile = 0; tile < 4; tile++)
+                        {
+                            <div class="card overflow-hidden border border-base-content/10" aria-hidden="true">
+                                <div class="skeleton h-24 w-full rounded-none motion-reduce:animate-none"></div>
+                                <div class="card-body gap-2 p-4">
+                                    <span class="skeleton h-5 w-1/2 motion-reduce:animate-none"></span>
+                                    <span class="skeleton h-4 w-2/3 motion-reduce:animate-none"></span>
+                                </div>
+                            </div>
+                        }
+                    }
+                    else
+                    {
+                        @foreach (var color in _colors ?? [])
+                        {
+                            <article class="card overflow-hidden border border-base-content/10 bg-base-100/60">
+                                <div class="h-24 border-b border-base-content/10" aria-hidden="true"
+                                     style="@($"background-color: rgb({color.Red}, {color.Green}, {color.Blue})")"></div>
+                                <div class="card-body gap-2 p-4">
+                                    <div class="flex flex-wrap items-center justify-between gap-2">
+                                        <h3 class="min-w-0 wrap-anywhere font-semibold">@color.Name</h3>
+                                        <span class="badge badge-sm badge-ghost">ID @color.Id</span>
+                                    </div>
+                                    <p class="text-xs tabular-nums text-base-content/70">RGB @color.Red / @color.Green / @color.Blue
+                                    </p>
+                                </div>
+                            </article>
+                        }
+                    }
+                </div>
+            }
+            else
+            {
+                var (caption, headings) = _activeTab switch
+                {
+                    MasterDataTab.Sizes => ("Größenstammdaten", new[] {
+ "ID", "Größe", "Größenlauf", "Sortierung" }),
+                    MasterDataTab.Branches => ("Filialen des angemeldeten Mandanten", new[] { "Nummer", "Name", "Ort", "Aktiv" }),
+                    MasterDataTab.Attributes => ("Webshoprelevante Merkmalsarten und Merkmale", new[] { "Typ-Nr.",
+           "Merkmalsart", "Merkmal-Nr.", "Merkmal" }),
+                    _ => ("Texte je Lieferstatus", new[] { "Status", "Deutsche Bezeichnung" })
+                };
+
+                <DataTable Caption="@caption" Headings="@headings" Loading="@_isLoading">
+                    @switch (_activeTab)
+                    {
+                        case MasterDataTab.Sizes:
+                            @foreach (var size in _sizes ?? [])
+                            {
+                                <tr>
+                                    <th scope="row">@size.Id</th>
+                                    <td>@size.Name</td>
+                                    <td>@size.SizeRange</td>
+                                    <td class="tabular-nums">@size.SortOrder</td>
+                                </tr>
+                            }
+                            break;
+                        case MasterDataTab.Branches:
+                            @foreach (var branch in _branches ?? [])
+                            {
+                                <tr>
+                                    <th scope="row">@branch.Number</th>
+                                    <td>@branch.Name</td>
+                                    <td>@branch.City</td>
+                                    <td><span class="badge badge-soft badge-sm @(branch.IsActive ? "badge-success" : "badge-neutral")">
+                                        @(branch.IsActive ? "Ja" : "Nein")
+                                    </span></td>
+                                </tr>
+                            }
+                            break;
+                        case MasterDataTab.Attributes:
+                            @foreach (var type in _attributeTypes ?? [])
+                            {
+                                if (type.Attributes.Count == 0)
+                                {
+                                    <tr>
+                                        <th scope="row">@type.Number</th>
+                                        <td>@type.Name</td>
+                                        <td colspan="2" class="text-base-content/70">Keine Merkmale</td>
+                                    </tr>
+                                }
+                                else
+                                {
+                                    @foreach (var feature in type.Attributes)
+                                    {
+                                        <tr>
+                                            <th scope="row">@type.Number</th>
+                                            <td>@type.Name</td>
+                                            <td>@feature.Number</td>
+                                            <td>@feature.Name</td>
+                                        </tr>
+                                    }
+                                }
+                            }
+                            break;
+                        case MasterDataTab.Delivery:
+                            @foreach (var delivery in _deliveries ?? [])
+                            {
+                                var badge = delivery.Status switch
+                                {
+                                    DeliveryStatus.AvailableNow => "badge-success",
+                                    DeliveryStatus.AvailableSoon => "badge-warning",
+                                    _ => "badge-neutral"
+                                };
+                                <tr>
+                                    <th scope="row">@JsonNamingPolicy.CamelCase.ConvertName(delivery.Status.ToString())</th>
+                                    <td><span class="badge badge-soft @badge">@delivery.Text</span></td>
+                                </tr>
+                            }
+                            break;
+                    }
+                </DataTable>
+            }
+        </section>
+    </DataPanel>
+</main>

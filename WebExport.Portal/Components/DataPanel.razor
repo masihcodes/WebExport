@@ -1,0 +1,18 @@
+<section class="card min-w-0 border border-base-content/10 bg-base-100/80 shadow backdrop-blur-md @Class">
+    <div class="card-body min-w-0 gap-5 p-4 sm:p-6">
+        <h2 class="card-title gap-3 text-lg">
+            <span class="grid size-9 shrink-0 place-items-center rounded-box bg-secondary/10 text-base-content">
+                <LucideIcon Name="@Icon" Size="19" aria-hidden="true" />
+            </span>
+            @Title
+        </h2>
+        @ChildContent
+    </div>
+</section>
+
+@code {
+    [Parameter, EditorRequired] public string Title { get; set; } = "";
+    [Parameter, EditorRequired] public string Icon { get; set; } = "";
+    [Parameter] public string? Class { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}

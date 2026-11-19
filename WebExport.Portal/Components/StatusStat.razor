@@ -1,0 +1,48 @@
+<div class="min-w-0 motion-safe:pointer-fine:hover-3d">
+    <div class="stats h-full w-full min-w-0 border border-base-content/10 bg-warning/10 backdrop-blur-xl shadow">
+        <div class="stat min-h-40 min-w-0 gap-3 p-5">
+            <div class="stat-title flex items-center justify-between gap-3 text-base-content/70">
+                <span>@Title</span>
+                <LucideIcon Name="@Icon" Size="21" Class="text-primary" aria-hidden="true" />
+            </div>
+            <div class="stat-value min-h-8 whitespace-normal text-2xl font-semibold tracking-tight">
+                @if (Loading)
+                {
+                    <span class="skeleton block h-8 w-32 motion-reduce:animate-none" aria-hidden="true"></span>
+                }
+                else
+                {
+                    @Value
+                }
+            </div>
+            <div class="stat-desc flex min-h-5 items-center gap-2 whitespace-normal text-base-content/70">
+                @if (Loading)
+                {
+                    <span class="skeleton block h-4 w-24 motion-reduce:animate-none" aria-hidden="true"></span>
+                }
+                else
+                {
+                    @if (IndicatorClass is not null)
+                    {
+                        <span class="status status-sm @IndicatorClass" aria-hidden="true"></span>
+                    }
+                    <span>@Description</span>
+                }
+            </div>
+        </div>
+    </div>
+    @* DaisyUI requires eight empty hover zones for the 3D effect. *@
+    @for (var zone = 0; zone < 8; zone++)
+    {
+        <div aria-hidden="true"></div>
+    }
+</div>
+
+@code {
+    [Parameter] public string Title { get; set; } = "";
+    [Parameter] public string Icon { get; set; } = "";
+    [Parameter] public string Value { get; set; } = "";
+    [Parameter] public string Description { get; set; } = "";
+    [Parameter] public bool Loading { get; set; }
+    [Parameter] public string? IndicatorClass { get; set; }
+}
