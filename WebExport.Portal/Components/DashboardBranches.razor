@@ -1,33 +1,53 @@
 @using System.Globalization
 
+
+@code {
+    [Parameter] public DashboardBranchStockDto[]? Branches { get; set; }
+    [Parameter] public string? Error { get; set; }
+
+    private const int PreviewLimit = 5;
+    private bool _showSkus;
+    private bool _showAll;
+
+    private static long SkuCount(DashboardBranchStockDto branch) => (long)branch.InStockSkuCount +
+branch.OutOfStockSkuCount;
+    private static string Number(decimal value) => value.ToString("#,0.############################",
+CultureInfo.GetCultureInfo("de-DE"));
+    private static string Percent(double value, double range) => (range > 0 ? value / range : 0).ToString("0.####%",
+CultureInfo.InvariantCulture);
+}
+
+
 <DataPanel Title="Bestand im Filialvergleich" Icon="store" Class="h-full">
     <div class="flex flex-wrap items-center justify-between gap-2">
-        <div class="join" role="group" aria-label="Kennzahl für den Filialvergleich">
-            <button type="button" class="btn btn-sm join-item @(!_showSkus ? "btn-primary" : "btn-soft")"
-                    aria-pressed="@(!_showSkus ? "true" : "false")" @onclick="() => _showSkus = false">
+        <div class="join">
+            <button class="btn btn-sm join-item @(!_showSkus ? "btn-primary" : "btn-soft")"
+                    @onclick="() => _showSkus = false">
                 Bestand
             </button>
             <button type="button" class="btn btn-sm join-item @(_showSkus ? "btn-primary" : "btn-soft")"
-                    aria-pressed="@(_showSkus ? "true" : "false")" @onclick="() => _showSkus = true">
+                    @onclick="() => _showSkus = true">
                 SKUs
             </button>
         </div>
         @if (Branches is { Length: > 0 } && Error is null)
         {
-            <span class="text-xs text-base-content/70">@Branches.Length @(Branches.Length == 1 ? "Filiale" : "Filialen")</span>
+            <span class="text-xs text-base-content/70">
+                @Branches.Length @(Branches.Length == 1 ? "Filiale" : "Filialen")
+            </span>
         }
     </div>
 
     @if (Error is not null)
     {
         <div role="alert" class="alert alert-error alert-soft">
-            <LucideIcon Name="circle-alert" Size="18" aria-hidden="true" /> <span>@Error</span>
+            <LucideIcon Name="circle-alert" Size="18" /> <span>@Error</span>
         </div>
     }
     else if (Branches is null)
     {
         <span class="sr-only" role="status">Filialbestände werden geladen.</span>
-        <div class="space-y-4" aria-hidden="true">
+        <div class="space-y-4">
             @for (var row = 0; row < 4; row++)
             {
                 <div class="space-y-2">
@@ -55,8 +75,14 @@
             @if (_showSkus)
             {
                 <figcaption class="flex flex-wrap gap-x-4 gap-y-2 text-xs text-base-content/75">
-                    <span class="inline-flex items-center gap-2"><span class="size-2.5 rounded-full bg-success" aria-hidden="true"></span>SKU mit Bestand &gt; 0</span>
-                    <span class="inline-flex items-center gap-2"><span class="size-2.5 rounded-xs bg-warning" aria-hidden="true"></span>SKU mit Bestand ≤ 0</span>
+                    <span class="inline-flex items-center gap-2">
+                        <span class="size-2.5 rounded-full bg-success" aria-hidden="true"></span>
+                        SKU mit Bestand &gt; 0
+                    </span>
+                    <span class="inline-flex items-center gap-2">
+                        <span class="size-2.5 rounded-xs bg-warning" aria-hidden="true"></span>
+                        SKU mit Bestand ≤ 0
+                    </span>
                 </figcaption>
             }
             else
@@ -69,17 +95,18 @@
                     <li class="space-y-1.5">
                         <div class="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
                             <div class="min-w-0 wrap-anywhere font-medium">
-                                @branch.BranchName <span class="text-xs font-normal text-base-content/65">Nr. @branch.BranchNumber</span>
+                                @branch.BranchName <span class="text-xs font-normal text-base-content/65">Nr.
+                                @branch.BranchNumber</span>
                             </div>
                             @if (_showSkus)
                             {
                                 <span class="inline-flex gap-3 text-sm font-semibold tabular-nums">
                                     <span class="inline-flex items-center gap-1.5">
-                                        <span class="size-2 rounded-full bg-success" aria-hidden="true"></span>
+                                        <span class="size-2 rounded-full bg-success"></span>
                                         <span class="sr-only">SKU mit positivem Bestand:</span>@Number(branch.InStockSkuCount)
                                     </span>
                                     <span class="inline-flex items-center gap-1.5">
-                                        <span class="size-2 rounded-xs bg-warning" aria-hidden="true"></span>
+                                        <span class="size-2 rounded-xs bg-warning"></span>
                                         <span class="sr-only">SKU ohne positiven Bestand:</span>@Number(branch.OutOfStockSkuCount)
                                     </span>
                                 </span>
@@ -91,7 +118,7 @@
                         </div>
                         @if (_showSkus)
                         {
-                            <div aria-hidden="true" class="flex h-2.5 overflow-hidden rounded-full bg-base-content/10">
+                            <div class="flex h-2.5 overflow-hidden rounded-full bg-base-content/10">
                                 <span class="bg-success" style="width: @Percent(branch.InStockSkuCount, range)"></span>
                                 <span class="bg-warning" style="width: @Percent(branch.OutOfStockSkuCount, range)"></span>
                             </div>
@@ -100,12 +127,13 @@
                         {
                             var value = (double)branch.TotalStock;
                             var start = value < 0 ? Percent(value - minimum, range) : origin;
-                            <div aria-hidden="true" class="relative h-2.5 rounded-full bg-base-content/10">
+                            <div class="relative h-2.5 rounded-full bg-base-content/10">
                                 <span class="absolute inset-y-0 rounded-full @(value < 0 ? "bg-error" : "bg-secondary")"
                                       style="left: @start; width: @Percent(Math.Abs(value), range)"></span>
                                 @if (minimum < 0)
                                 {
-                                    <span class="absolute -inset-y-0.5 w-px -translate-x-px bg-base-content/60" style="left: @origin"></span>
+                                    <span class="absolute -inset-y-0.5 w-px -translate-x-px bg-base-content/60"
+                                          style="left: @origin"></span>
                                 }
                             </div>
                         }
@@ -115,24 +143,10 @@
         </figure>
         @if (Branches.Length > PreviewLimit)
         {
-            <button type="button" class="btn btn-ghost btn-sm self-start" aria-expanded="@(_showAll ? "true" : "false")"
-                    @onclick="() => _showAll = !_showAll">
+            <button class="btn btn-ghost btn-sm self-start" @onclick="() => _showAll = !_showAll">
                 @(_showAll ? "Weniger anzeigen" : $"Alle {Branches.Length} Filialen anzeigen")
-                <LucideIcon Name="@(_showAll ? "chevron-up" : "chevron-down")" Size="15" aria-hidden="true" />
+                <LucideIcon Name="@(_showAll ? "chevron-up" : "chevron-down")" Size="15" />
             </button>
         }
     }
 </DataPanel>
-
-@code {
-    [Parameter] public DashboardBranchStockDto[]? Branches { get; set; }
-    [Parameter] public string? Error { get; set; }
-
-    private const int PreviewLimit = 5;
-    private bool _showSkus;
-    private bool _showAll;
-
-    private static long SkuCount(DashboardBranchStockDto branch) => (long)branch.InStockSkuCount + branch.OutOfStockSkuCount;
-    private static string Number(decimal value) => value.ToString("#,0.############################", CultureInfo.GetCultureInfo("de-DE"));
-    private static string Percent(double value, double range) => (range > 0 ? value / range : 0).ToString("0.####%", CultureInfo.InvariantCulture);
-}

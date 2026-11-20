@@ -1,9 +1,15 @@
+@code {
+    [Parameter, EditorRequired] public string Label { get; set; } = "";
+    [Parameter] public bool Loading { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}
+
 <div class="min-w-0 space-y-1">
     <dt class="text-xs text-base-content/70">@Label</dt>
     <dd class="min-h-5 wrap-anywhere font-medium">
         @if (Loading)
         {
-            <span class="skeleton block h-5 w-24 max-w-full motion-reduce:animate-none" aria-hidden="true"></span>
+            <span class="skeleton block h-5 w-24 max-w-full motion-reduce:animate-none"></span>
         }
         else
         {
@@ -12,8 +18,3 @@
     </dd>
 </div>
 
-@code {
-    [Parameter, EditorRequired] public string Label { get; set; } = "";
-    [Parameter] public bool Loading { get; set; }
-    [Parameter] public RenderFragment? ChildContent { get; set; }
-}

@@ -1,14 +1,14 @@
+@code {
+    [Parameter, EditorRequired] public int Columns { get; set; }
+    [Parameter] public int Rows { get; set; } = 4;
+}
+
 @for (var row = 0; row < Rows; row++)
 {
-    <tr aria-hidden="true">
+    <tr>
         @for (var col = 0; col < Columns; col++)
         {
             <td><span class="skeleton my-1.5 block h-4 w-16 max-w-full motion-reduce:animate-none"></span></td>
         }
     </tr>
-}
-
-@code {
-    [Parameter, EditorRequired] public int Columns { get; set; }
-    [Parameter] public int Rows { get; set; } = 4;
 }

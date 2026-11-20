@@ -1,18 +1,26 @@
 @using System.Globalization
 
+@code {
+    [Parameter] public DashboardTopCategoryDto[]? Categories { get; set; }
+    [Parameter] public string? Error { get; set; }
+
+    private static readonly CultureInfo German = CultureInfo.GetCultureInfo("de-DE");
+}
+
+
 <DataPanel Title="Artikelstärkste Kategorien" Icon="folder-tree" Class="h-full">
     @if (!string.IsNullOrWhiteSpace(Error))
     {
         <div class="alert alert-error alert-soft" role="alert">
-            <LucideIcon Name="circle-alert" Size="18" aria-hidden="true" /> @Error
+            <LucideIcon Name="circle-alert" Size="18" /> @Error
         </div>
     }
     else if (Categories is null)
     {
-        <div class="space-y-4" aria-busy="true" aria-label="Kategorien werden geladen">
+        <div class="space-y-4" aria-busy="true">
             @for (var i = 0; i < 5; i++)
             {
-                <div class="flex items-center gap-3" aria-hidden="true">
+                <div class="flex items-center gap-3">
                     <div class="skeleton size-7 shrink-0 motion-reduce:animate-none"></div>
                     <div class="skeleton h-4 w-2/3 motion-reduce:animate-none"></div>
                 </div>
@@ -34,24 +42,17 @@
                 <li>
                     <a class="group grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1 rounded-field px-1 py-2 hover:bg-base-200/70"
                        href="@($"/articles?category={category.CategoryNumber}")">
-                        <span class="badge badge-ghost badge-sm row-span-2 tabular-nums" aria-hidden="true">@(i + 1)</span>
+                        <span class="badge badge-ghost badge-sm row-span-2 tabular-nums">@(i + 1)</span>
                         <span class="wrap-anywhere font-medium group-hover:underline">@category.CategoryName</span>
                         <span class="flex items-center gap-1 text-sm font-semibold tabular-nums">
                             @category.ArticleCount.ToString("N0", German)<span class="sr-only"> Artikel</span>
-                            <LucideIcon Name="chevron-right" Size="14" Class="text-base-content/60" aria-hidden="true" />
+                            <LucideIcon Name="chevron-right" Size="14" Class="text-base-content/60" />
                         </span>
                         <progress class="progress progress-accent col-span-2 h-1.5 w-full" value="@category.ArticleCount"
-                                  max="@maximum" aria-hidden="true"></progress>
+                                  max="@maximum"></progress>
                     </a>
                 </li>
             }
         </ol>
     }
 </DataPanel>
-
-@code {
-    [Parameter] public DashboardTopCategoryDto[]? Categories { get; set; }
-    [Parameter] public string? Error { get; set; }
-
-    private static readonly CultureInfo German = CultureInfo.GetCultureInfo("de-DE");
-}

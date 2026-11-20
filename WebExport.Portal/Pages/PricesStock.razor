@@ -195,17 +195,21 @@
                    Tenant="@Session.Tenant?.Name" />
 
     <DataPanel Title="Filter" Icon="list-filter">
+
         <EditForm Model="_query" OnValidSubmit="HandleSubmit" class="space-y-5">
+
             <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+
                 <label class="fieldset">
                     <span class="label">Artikelnummer</span>
                     <InputText @bind-Value="_query.ArticleNumber" class="input w-full" placeholder="z. B. 100234" />
                 </label>
+
                 <label class="fieldset">
                     <span class="label">Filiale</span>
                     @if (_isLoading && _branches is null && string.IsNullOrEmpty(_branchesError))
                     {
-                        <span class="skeleton block h-10 w-full motion-reduce:animate-none" aria-hidden="true"></span>
+                        <span class="skeleton block h-10 w-full motion-reduce:animate-none"></span>
                     }
                     else
                     {
@@ -218,10 +222,12 @@
                         </InputSelect>
                     }
                 </label>
+
                 <label class="fieldset">
                     <span class="label">Geändert seit (UTC)</span>
                     <InputDate @bind-Value="_query.ModifiedSince" class="input w-full" />
                 </label>
+
                 <label class="fieldset">
                     <span class="label">Einträge pro Seite</span>
                     <InputSelect @bind-Value="_query.PageSize" class="select w-full">
@@ -232,53 +238,61 @@
                     </InputSelect>
                 </label>
             </div>
+
             @if (!string.IsNullOrWhiteSpace(_branchesError))
             {
                 <div class="alert alert-warning alert-soft" role="alert">
-                    <LucideIcon Name="circle-alert" Size="18" aria-hidden="true" />
+                    <LucideIcon Name="circle-alert" Size="18" />
                     <span>Filialauswahl: @_branchesError</span>
                 </div>
             }
             <div class="flex flex-wrap items-center justify-between gap-3">
+
                 <label class="label gap-2 text-base-content">
                     <InputCheckbox @bind-Value="_query.IncludeDeleted" class="checkbox checkbox-sm checkbox-primary" />
                     Gelöschte einschließen
                 </label>
+
                 <button type="submit" class="btn btn-primary" disabled="@_isLoading">
-                    <LucideIcon Name="search" Size="16" aria-hidden="true" /> Filter anwenden
+                    <LucideIcon Name="search" Size="16" /> Filter anwenden
                 </button>
+
             </div>
+            
         </EditForm>
     </DataPanel>
 
     <DataPanel Title="Preis- und Bestandsübersicht" Icon="table-2">
-        <p class="sr-only" role="status">@(_isLoading ? "Preise und Bestände werden geladen." :
-                                                            $"{_pricesStock?.TotalCount ?? 0} Einträge.")</p>
-            <DataTable Caption="Preis- und Bestandsübersicht"
-                       Headings="@(new[] { "SKU", "Artikel", "VK-Preis", "Reduziert", "Bestand", "Sofort", "Bald", "Nicht lieferbar", "Gelöscht", "Geändert (UTC)" })"
-                       Loading="@_isLoading" HasRows="@(_pricesStock?.Data.Count > 0)" Error="@_pricesStockError">
-                @foreach (var row in _pricesStock?.Data ?? [])
-                {
-                    <tr class="whitespace-nowrap tabular-nums hover:bg-base-200/70">
-                        <td><a class="link link-primary font-semibold" href="/sku-detail/@row.Sku">@row.Sku</a></td>
-                        <td><a class="link link-primary" href="/article-detail/@row.ArticleNumber">@row.ArticleNumber</a></td>
-                        <td>@row.SalesPrice €</td>
-                        <td>@(row.SalesPriceReduced is { } price ? $"{price} €" : "—")</td>
-                        <td><strong>@row.Stock</strong></td>
-                        <td>@row.Quantities.AvailableNow</td>
-                        <td>@row.Quantities.AvailableSoon</td>
-                        <td>@row.Quantities.NotAvailable</td>
-                        <td>
-                            <span class="badge badge-sm @(row.IsDeleted ? "badge-error badge-soft" : "badge-ghost")">
-                                @(row.IsDeleted ? "Ja" : "Nein")
-                            </span>
-                        </td>
-                        <td>@row.ModifiedAt.ToUniversalTime().ToString("dd.MM.yyyy HH:mm:ss")</td>
-                    </tr>
-                }
-            </DataTable>
-            <ResultsPager Loading="@_isLoading" First="@FirstEntry" Last="@LastEntry"
-                          Total="@(_pricesStock?.TotalCount ?? 0)" Page="@(_pricesStock?.Page ?? 0)"
-                          Pages="@(_pricesStock?.TotalPages ?? 0)" Previous="PreviousPageAsync" Next="NextPageAsync" />
-        </DataPanel>
-    </main>
+        <p class="sr-only" role="status">
+            @(_isLoading ? "Preise und Bestände werden geladen." : $"{_pricesStock?.TotalCount ?? 0} Einträge.")
+        </p>
+        <DataTable Caption="Preis- und Bestandsübersicht"
+                   Headings="@(new[] { "SKU", "Artikel", "VK-Preis", "Reduziert", "Bestand", "Sofort", "Bald", "Nicht lieferbar", "Gelöscht", "Geändert (UTC)" })"
+                   Loading="@_isLoading" HasRows="@(_pricesStock?.Data.Count > 0)" Error="@_pricesStockError">
+
+            @foreach (var row in _pricesStock?.Data ?? [])
+            {
+                <tr class="whitespace-nowrap tabular-nums hover:bg-base-200/70">
+                    <td><a class="link link-primary font-semibold" href="/sku-detail/@row.Sku">@row.Sku</a></td>
+                    <td><a class="link link-primary" href="/article-detail/@row.ArticleNumber">@row.ArticleNumber</a></td>
+                    <td>@row.SalesPrice €</td>
+                    <td>@(row.SalesPriceReduced is { } price ? $"{price} €" : "—")</td>
+                    <td><strong>@row.Stock</strong></td>
+                    <td>@row.Quantities.AvailableNow</td>
+                    <td>@row.Quantities.AvailableSoon</td>
+                    <td>@row.Quantities.NotAvailable</td>
+                    <td>
+                        <span class="badge badge-sm @(row.IsDeleted ? "badge-error badge-soft" : "badge-ghost")">
+                            @(row.IsDeleted ? "Ja" : "Nein")
+                        </span>
+                    </td>
+                    <td>@row.ModifiedAt.ToUniversalTime().ToString("dd.MM.yyyy HH:mm:ss")</td>
+                </tr>
+            }
+        </DataTable>
+
+        <ResultsPager Loading="@_isLoading" First="@FirstEntry" Last="@LastEntry"
+                      Total="@(_pricesStock?.TotalCount ?? 0)" Page="@(_pricesStock?.Page ?? 0)"
+                      Pages="@(_pricesStock?.TotalPages ?? 0)" Previous="PreviousPageAsync" Next="NextPageAsync" />
+    </DataPanel>
+</main>

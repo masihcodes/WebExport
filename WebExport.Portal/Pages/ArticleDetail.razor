@@ -155,20 +155,20 @@
     <PortalHeading Section="Artikeldetail" Title="@(_article?.Name ?? "Artikeldetail")" Icon="package"
                    Tenant="@Session.Tenant?.Name" LoadingTitle="@_isLoading">
         <a href="/articles" class="btn btn-ghost">
-            <LucideIcon Name="arrow-left" Size="16" aria-hidden="true" /> Zur Artikelliste
+            <LucideIcon Name="arrow-left" Size="16" /> Zur Artikelliste
         </a>
     </PortalHeading>
 
     @if (!_isLoading && !string.IsNullOrWhiteSpace(_articleError))
     {
         <div class="alert alert-error alert-soft" role="alert">
-            <LucideIcon Name="circle-alert" Size="19" aria-hidden="true" /> @_articleError
+            <LucideIcon Name="circle-alert" Size="19" /> @_articleError
         </div>
     }
     else if (!_isLoading && _article is null)
     {
         <p class="alert alert-soft" role="status">
-            <LucideIcon Name="package-open" Size="19" aria-hidden="true" /> Keine Artikeldaten vorhanden.
+            <LucideIcon Name="package-open" Size="19" /> Keine Artikeldaten vorhanden.
         </p>
     }
     else
@@ -177,13 +177,13 @@
             <div class="grid items-center gap-6 sm:grid-cols-[auto_1fr]">
                 <div
                     class="flex min-h-32 flex-col items-center justify-center gap-2 rounded-box bg-linear-to-br from-secondary/15 via-base-200 to-accent/20 p-4 text-base-content/70 sm:size-44">
-                    <LucideIcon Name="shirt" Size="62" StrokeWidth="1.5" aria-hidden="true" />
+                    <LucideIcon Name="shirt" Size="62" StrokeWidth="1.5" />
                     <span class="text-xs">Bildplatzhalter</span>
                 </div>
                 <div class="min-w-0 space-y-3">
                     @if (_isLoading)
                     {
-                        <div class="space-y-3 motion-reduce:*:animate-none" aria-hidden="true">
+                        <div class="space-y-3 motion-reduce:*:animate-none">
                             <div class="skeleton h-6 w-36"></div>
                             <div class="skeleton h-4 w-4/5"></div>
                             <div class="skeleton h-5 w-48 max-w-full"></div>
@@ -209,106 +209,127 @@
                                 @(article.IsDeleted ? "Gelöscht" : "Aktiv")
                             </span>
                         </div>
-                        <p class="text-xs text-base-content/70">Zuletzt geändert:
-                            @article.ModifiedAt.UtcDateTime.ToString("dd.MM.yyyy HH:mm:ss") UTC</p>
-                        }
-                    </div>
+                        <p class="text-xs text-base-content/70">
+                            Zuletzt geändert: @article.ModifiedAt.UtcDateTime.ToString("dd.MM.yyyy HH:mm:ss") UTC
+                        </p>
+                    }
                 </div>
+            </div>
+        </DataPanel>
+
+        <DataPanel Title="Varianten / SKUs" Icon="layers">
+            <DataTable Caption="Alle Varianten des Artikels, einschließlich gelöschter SKUs"
+                       Headings="@(new[] { "SKU", "Farbe", "Größe", "Form", "Lieferantenfarbe", "VK", "Reduziert", "Bestand", "Sofort / Bald / Nicht", "Führende Farbe", "Gelöscht" })"
+                       Loading="@_isLoading" HasRows="@(_article?.Skus.Count > 0)" SkeletonRows="3"
+                       EmptyMessage="Keine Varianten vorhanden.">
+
+                @foreach (var sku in _article?.Skus ?? [])
+                {
+                    <tr>
+                        <th scope="row"><a class="link font-mono" href="/sku-detail/@sku.Sku">@sku.Sku</a></th>
+                        <td>@sku.Color.Name</td>
+                        <td>@sku.Size</td>
+                        <td>@(sku.Fit ?? "—")</td>
+                        <td>@(sku.SupplierColor ?? "—")</td>
+                        <td class="whitespace-nowrap">@sku.SalesPrice €</td>
+                        <td class="whitespace-nowrap">@(sku.SalesPriceReduced is { } price ? $"{price} €" : "—")</td>
+                        <td>@sku.Stock</td>
+                        <td class="whitespace-nowrap">
+                            @sku.Quantities.AvailableNow / @sku.Quantities.AvailableSoon / @sku.Quantities.NotAvailable
+                        </td>
+                        <td>
+                            <span class="badge badge-sm @(sku.IsLeadingColor ? "badge-success badge-soft" : "badge-ghost")">
+                                @(sku.IsLeadingColor ? "Ja" : "Nein")
+                            </span>
+                        </td>
+                        <td>
+                            <span class="badge badge-sm @(sku.IsDeleted ? "badge-error badge-soft" : "badge-ghost")">
+                                @(sku.IsDeleted ? "Ja" : "Nein")
+                            </span>
+                        </td>
+                    </tr>
+                }
+            </DataTable>
+            <p class="text-xs text-base-content/70">Bestand: alle Filialen</p>
+        </DataPanel>
+
+        <div class="grid gap-6 xl:grid-cols-2">
+            <DataPanel Title="Allgemeine Angaben" Icon="clipboard-list">
+                <dl class="grid gap-x-6 gap-y-4 sm:grid-cols-2">
+
+                    <DetailField Label="Hersteller" Loading="@_isLoading">@_article?.Manufacturer</DetailField>
+
+                    <DetailField Label="Marke / Kollektion" Loading="@_isLoading">@(_article?.Label ?? "—")</DetailField>
+
+                    <DetailField Label="Herstellerseite" Loading="@_isLoading">
+
+                        @if (!string.IsNullOrWhiteSpace(_article?.ManufacturerUrl))
+                        {
+                            <a class="link" href="@_article.ManufacturerUrl" target="_blank" rel="noreferrer">
+                                @(_article.ManufacturerUrlText ?? _article.ManufacturerUrl)
+                            </a>
+                        }
+                        else
+                        {
+                            <span>@(_article?.ManufacturerUrlText ?? "—")</span>
+                        }
+                    </DetailField>
+                    
+                    <DetailField Label="Gültig von / bis" Loading="@_isLoading">
+                        @(_article?.ValidFrom?.ToString("dd.MM.yyyy") ?? "—") /
+                        @(_article?.ValidTo?.ToString("dd.MM.yyyy") ?? "unbegrenzt")
+                    </DetailField>
+
+                    <DetailField Label="Lieferzeit" Loading="@_isLoading">
+                        @if (_article?.DeliveryTime is { } delivery)
+                        {
+                            <span class="block">@delivery.Text</span>
+                            <span>
+                                min. @(delivery.MinDays?.ToString() ?? "—") · max. @(delivery.MaxDays?.ToString() ?? "—") Tage
+                            </span>
+                        }
+                    </DetailField>
+
+                    <DetailField Label="Versandmaße" Loading="@_isLoading">
+                        @if (_article?.ShippingDimensions is { } dimensions)
+                        {
+                            <span>
+                                @(dimensions.LengthCm?.ToString() ?? "—") × @(dimensions.WidthCm?.ToString() ?? "—") ×
+                                @(dimensions.HeightCm?.ToString() ?? "—") cm
+                            </span>
+                        }
+                    </DetailField>
+                    <DetailField Label="Gewicht" Loading="@_isLoading">
+                        @(_article?.ShippingDimensions.WeightKg?.ToString() ?? "—") kg
+                    </DetailField>
+
+                    <DetailField Label="Kategorien" Loading="@_isLoading">
+                        @if (_article?.Categories is { Count: > 0 } categories)
+                        {
+                            @foreach (var category in categories)
+                            {
+                                <span class="block">
+                                    @category.Number · @(_categories?.FirstOrDefault(c => c.Number == category.Number)?.Name ?? "—")
+                                </span>
+                            }
+                        }
+                        else
+                        {
+                            <span>—</span>
+                        }
+                        @if (!string.IsNullOrWhiteSpace(_categoriesError))
+                        {
+                            <span class="block text-xs text-error" role="alert">@_categoriesError</span>
+                        }
+                    </DetailField>
+
+                </dl>
             </DataPanel>
 
-            <DataPanel Title="Varianten / SKUs" Icon="layers">
-                <DataTable Caption="Alle Varianten des Artikels, einschließlich gelöschter SKUs"
-                           Headings="@(new[] { "SKU", "Farbe", "Größe", "Form", "Lieferantenfarbe", "VK", "Reduziert", "Bestand", "Sofort / Bald / Nicht", "Führende Farbe", "Gelöscht" })"
-                           Loading="@_isLoading" HasRows="@(_article?.Skus.Count > 0)" SkeletonRows="3"
-                           EmptyMessage="Keine Varianten vorhanden.">
-                    @foreach (var sku in _article?.Skus ?? [])
+            <DataPanel Title="Artikeleigenschaften" Icon="list-checks">
+                <dl class="grid gap-x-6 gap-y-4 sm:grid-cols-2">
+                    @foreach (var (label, enabled, tone) in new[]
                     {
-                        <tr>
-                            <th scope="row"><a class="link font-mono" href="/sku-detail/@sku.Sku">@sku.Sku</a></th>
-                            <td>@sku.Color.Name</td>
-                            <td>@sku.Size</td>
-                            <td>@(sku.Fit ?? "—")</td>
-                            <td>@(sku.SupplierColor ?? "—")</td>
-                            <td class="whitespace-nowrap">@sku.SalesPrice €</td>
-                            <td class="whitespace-nowrap">@(sku.SalesPriceReduced is { } price ? $"{price} €" : "—")</td>
-                            <td>@sku.Stock</td>
-                            <td class="whitespace-nowrap">@sku.Quantities.AvailableNow / @sku.Quantities.AvailableSoon /
-                                @sku.Quantities.NotAvailable</td>
-                                <td><span
-                                    class="badge badge-sm @(sku.IsLeadingColor ? "badge-success badge-soft" : "badge-ghost")">@(sku.IsLeadingColor
-                                    ? "Ja" : "Nein")</span></td>
-                                    <td><span
-                                        class="badge badge-sm @(sku.IsDeleted ? "badge-error badge-soft" : "badge-ghost")">@(sku.IsDeleted
-                                        ? "Ja" : "Nein")</span></td>
-                                    </tr>
-                                }
-                            </DataTable>
-                            <p class="text-xs text-base-content/70">Bestand: alle Filialen</p>
-                        </DataPanel>
-
-                        <div class="grid gap-6 xl:grid-cols-2">
-                            <DataPanel Title="Allgemeine Angaben" Icon="clipboard-list">
-                                <dl class="grid gap-x-6 gap-y-4 sm:grid-cols-2">
-                                    <DetailField Label="Hersteller" Loading="@_isLoading">@_article?.Manufacturer</DetailField>
-                                    <DetailField Label="Marke / Kollektion" Loading="@_isLoading">@(_article?.Label ?? "—")</DetailField>
-                                    <DetailField Label="Herstellerseite" Loading="@_isLoading">
-                                        @if (!string.IsNullOrWhiteSpace(_article?.ManufacturerUrl))
-                                        {
-                                            <a class="link" href="@_article.ManufacturerUrl" target="_blank" rel="noreferrer">
-                                                @(_article.ManufacturerUrlText ?? _article.ManufacturerUrl)
-                                            </a>
-                                        }
-                                        else
-                                        {
-                                            <span>@(_article?.ManufacturerUrlText ?? "—")</span>
-                                        }
-                                    </DetailField>
-                                    <DetailField Label="Gültig von / bis" Loading="@_isLoading">
-@(_article?.ValidFrom?.ToString("dd.MM.yyyy") ?? "—") / @(_article?.ValidTo?.ToString("dd.MM.yyyy")
-                    ?? "unbegrenzt")
-                                    </DetailField>
-                                    <DetailField Label="Lieferzeit" Loading="@_isLoading">
-                                        @if (_article?.DeliveryTime is { } delivery)
-                                        {
-                                            <span class="block">@delivery.Text</span>
-                                            <span>min. @(delivery.MinDays?.ToString() ?? "—") · max. @(delivery.MaxDays?.ToString() ?? "—")
-                                                Tage</span>
-                                            }
-                                        </DetailField>
-                                        <DetailField Label="Versandmaße" Loading="@_isLoading">
-                                            @if (_article?.ShippingDimensions is { } dimensions)
-                                            {
-                                                <span>@(dimensions.LengthCm?.ToString() ?? "—") × @(dimensions.WidthCm?.ToString() ?? "—") ×
-                                                    @(dimensions.HeightCm?.ToString() ?? "—") cm</span>
-                                                }
-                                            </DetailField>
-                                            <DetailField Label="Gewicht" Loading="@_isLoading">@(_article?.ShippingDimensions.WeightKg?.ToString()
-                                                                                                                                                                                                                    ?? "—") kg</DetailField>
-                                                <DetailField Label="Kategorien" Loading="@_isLoading">
-                                                    @if (_article?.Categories is { Count: > 0 } categories)
-                                                    {
-                                                        @foreach (var category in categories)
-                                                        {
-                                                            <span class="block">@category.Number · @(_categories?.FirstOrDefault(c => c.Number ==
-                                                                                                                                                                                                                                                                                        category.Number)?.Name ?? "—")</span>
-                                                            }
-                                                        }
-                        else
-                                                        {
-                                                            <span>—</span>
-                                                        }
-                                                        @if (!string.IsNullOrWhiteSpace(_categoriesError))
-                                                        {
-                                                            <span class="block text-xs text-error" role="alert">@_categoriesError</span>
-                                                        }
-                                                    </DetailField>
-                                                </dl>
-                                            </DataPanel>
-
-                                            <DataPanel Title="Artikeleigenschaften" Icon="list-checks">
-                                                <dl class="grid gap-x-6 gap-y-4 sm:grid-cols-2">
-                                                    @foreach (var (label, enabled, tone) in new[]
-                                                    {
                         ("Suchbar", _article?.IsSearchable, "badge-success"),
                         ("Bestellbar", _article?.IsOrderable, "badge-success"),
                         ("Rabattfähig", _article?.IsDiscountable, "badge-success"),
@@ -316,135 +337,144 @@
                         ("Versandkostenfrei", _article?.IsFreeShipping, "badge-success"),
                         ("Gelöscht", _article?.IsDeleted, "badge-error")
                     })
-                                                    {
-                                                        <DetailField Label="@label" Loading="@_isLoading">
-                                                            <span class="badge badge-sm @(enabled == true ? $"badge-soft {tone}" : "badge-ghost")">
-                                                                @(enabled == true ? "Ja" : "Nein")
-                                                            </span>
-                                                        </DetailField>
-                                                    }
-                                                </dl>
-                                            </DataPanel>
+                    {
+                        <DetailField Label="@label" Loading="@_isLoading">
+                            <span class="badge badge-sm @(enabled == true ? $"badge-soft {tone}" : "badge-ghost")">
+                                @(enabled == true ? "Ja" : "Nein")
+                            </span>
+                        </DetailField>
+                    }
+                </dl>
+            </DataPanel>
 
-                                            <DataPanel Title="Texte nach Typ" Icon="file-text">
-                                                @if (_isLoading)
-                                                {
-                                                    <div class="space-y-3 motion-reduce:*:animate-none" aria-hidden="true">
-                                                        <div class="skeleton h-5 w-24"></div>
-                                                        <div class="skeleton h-4 w-full"></div>
-                                                        <div class="skeleton h-4 w-3/4"></div>
-                                                    </div>
-                                                }
-                                                else if (_texts.Count == 0)
-                                                {
-                                                    <p class="text-sm text-base-content/70">Keine Texte vorhanden.</p>
-                                                }
-                                                else
-                                                {
-                                                    @foreach (var group in _texts)
-                                                    {
-                                                        <div>
-                                                            <h3 class="mb-2 font-semibold">@group.Key</h3>
-                                                            <ol class="space-y-2">
-                                                                @foreach (var item in group.OrderBy(text => text.SortOrder))
-                                                                {
-                                                                    <li class="flex items-baseline gap-3">
-                                                                        <span class="badge badge-sm badge-ghost">@item.SortOrder</span>
-                                                                        <span class="min-w-0 wrap-break-word">@item.Text</span>
-                                                                    </li>
-                                                                }
-                                                            </ol>
-                                                        </div>
-                                                    }
-                                                }
-                                            </DataPanel>
+            <DataPanel Title="Texte nach Typ" Icon="file-text">
+                @if (_isLoading)
+                {
+                    <div class="space-y-3 motion-reduce:*:animate-none">
+                        <div class="skeleton h-5 w-24"></div>
+                        <div class="skeleton h-4 w-full"></div>
+                        <div class="skeleton h-4 w-3/4"></div>
+                    </div>
+                }
+                else if (_texts.Count == 0)
+                {
+                    <p class="text-sm text-base-content/70">Keine Texte vorhanden.</p>
+                }
+                else
+                {
+                    @foreach (var group in _texts)
+                    {
+                        <div>
+                            <h3 class="mb-2 font-semibold">@group.Key</h3>
+                            <ol class="space-y-2">
+                                @foreach (var item in group.OrderBy(text => text.SortOrder))
+                                {
+                                    <li class="flex items-baseline gap-3">
+                                        <span class="badge badge-sm badge-ghost">@item.SortOrder</span>
+                                        <span class="min-w-0 wrap-break-word">@item.Text</span>
+                                    </li>
+                                }
+                            </ol>
+                        </div>
+                    }
+                }
+            </DataPanel>
 
-                                            <DataPanel Title="Material & Maße" Icon="ruler">
-                                                <DataTable Caption="Materialzusammensetzung" Headings="@(new[] { "Materialart", "Material", "Anteil" })"
-                                                           Loading="@_isLoading" HasRows="@(_article?.MaterialComposition.Count > 0)" SkeletonRows="2"
-                                                           EmptyMessage="Keine Materialangaben vorhanden.">
-                                                    @foreach (var material in _article?.MaterialComposition ?? [])
-                                                    {
-                                                        <tr>
-                                                            <th scope="row">@material.MaterialType</th>
-                                                            <td>@material.Material</td>
-                                                            <td>@material.Percentage %</td>
-                                                        </tr>
-                                                    }
-                                                </DataTable>
-                                                <h3 class="font-semibold">Maßtabelle</h3>
-                                                <DataTable Caption="Artikelmaßtabelle" Headings="@(new[] { "Größe", "Messung", "Wert" })"
-                                                           Loading="@_isLoading" HasRows="@(_article?.SizeChart.Count > 0)" SkeletonRows="2"
-                                                           EmptyMessage="Keine Maßangaben vorhanden.">
-                                                    @foreach (var size in _article?.SizeChart ?? [])
-                                                    {
-                                                        <tr>
-                                                            <th scope="row">@size.Size</th>
-                                                            <td>@size.Name</td>
-                                                            <td>@size.Value @size.Unit</td>
-                                                        </tr>
-                                                    }
-                                                </DataTable>
-                                            </DataPanel>
+            <DataPanel Title="Material & Maße" Icon="ruler">
 
-                                            <DataPanel Title="Bilddateien" Icon="images">
-                                                <DataTable Caption="Dateinamen und Metadaten der Artikelbilder"
-                                                           Headings="@(new[] { "Dateiname", "Typ", "Farb-ID", "Rang", "Gelöscht" })" Loading="@_isLoading"
-                                                           HasRows="@(_article?.Images.Count > 0)" SkeletonRows="2" EmptyMessage="Keine Bilddateien vorhanden.">
-                                                    @foreach (var image in _article?.Images ?? [])
-                                                    {
-                                                        <tr>
-                                                            <th scope="row" class="font-mono">@image.FileName</th>
-                                                            <td>@image.Type</td>
-                                                            <td>@(image.ColorId?.ToString() ?? "—")</td>
-                                                            <td>@image.SortOrder</td>
-                                                            <td><span
-                                                                class="badge badge-sm @(image.IsDeleted ? "badge-error badge-soft" : "badge-ghost")">@(image.IsDeleted
-                                                                ? "Ja" : "Nein")</span></td>
-                                                            </tr>
-                                                        }
-                                                    </DataTable>
-                                                </DataPanel>
+                <DataTable Caption="Materialzusammensetzung" Headings="@(new[] { "Materialart", "Material", "Anteil" })"
+                           Loading="@_isLoading" HasRows="@(_article?.MaterialComposition.Count > 0)" SkeletonRows="2"
+                           EmptyMessage="Keine Materialangaben vorhanden.">
 
-                                                <DataPanel Title="Merkmale & Beziehungen" Icon="network">
-                                                    <dl class="grid gap-x-6 gap-y-4 sm:grid-cols-2">
-                                                        @if (_isLoading)
-                                                        {
-                                                            <div class="space-y-2 motion-reduce:*:animate-none" aria-hidden="true">
-                                                                <dt class="skeleton h-3 w-32"></dt>
-                                                                <dd class="skeleton h-5 w-24"></dd>
-                                                            </div>
-                                                        }
-                                                        else
-                                                        {
-                                                            @foreach (var trait in _article?.Attributes ?? [])
-                                                            {
-                                                                <DetailField
-                                                                    Label="@($"{trait.AttributeTypeName} · Typ {trait.AttributeType} / Merkmal {trait.Number}")">
-                                                                    @trait.Name</DetailField>
-                                                                }
-                                                            }
-                                                            @foreach (var (label, numbers) in new[] { ("Verwandter Artikel", _relateds), ("Zubehör", _accessories)
-    })
-                                                            {
-                                                                <DetailField Label="@label" Loading="@_isLoading">
-                                                                    @if (numbers.Length == 0)
-                                                                    {
-                                                                        <span>—</span>
-                                                                    }
-                                                                    else
-                                                                    {
-                                                                        <div class="flex flex-wrap gap-2">
-                                                                            @foreach (var number in numbers)
-                                                                            {
-                                                                                <a class="link font-mono" href="/article-detail/@number">@number</a>
-                                                                            }
-                                                                        </div>
-                                                                    }
-                                                                </DetailField>
-                                                            }
-                                                        </dl>
-                                                    </DataPanel>
-                                                </div>
-                                            }
-                                        </main>
+                    @foreach (var material in _article?.MaterialComposition ?? [])
+                    {
+                        <tr>
+                            <th scope="row">@material.MaterialType</th>
+                            <td>@material.Material</td>
+                            <td>@material.Percentage %</td>
+                        </tr>
+                    }
+                </DataTable>
+
+                <h3 class="font-semibold">Maßtabelle</h3>
+
+                <DataTable Caption="Artikelmaßtabelle" Headings="@(new[] { "Größe", "Messung", "Wert" })"
+                           Loading="@_isLoading" HasRows="@(_article?.SizeChart.Count > 0)" SkeletonRows="2"
+                           EmptyMessage="Keine Maßangaben vorhanden.">
+                    @foreach (var size in _article?.SizeChart ?? [])
+                    {
+                        <tr>
+                            <th scope="row">@size.Size</th>
+                            <td>@size.Name</td>
+                            <td>@size.Value @size.Unit</td>
+                        </tr>
+                    }
+                </DataTable>
+
+            </DataPanel>
+
+            <DataPanel Title="Bilddateien" Icon="images">
+                <DataTable Caption="Dateinamen und Metadaten der Artikelbilder"
+                           Headings="@(new[] { "Dateiname", "Typ", "Farb-ID", "Rang", "Gelöscht" })" Loading="@_isLoading"
+                           HasRows="@(_article?.Images.Count > 0)" SkeletonRows="2" EmptyMessage="Keine Bilddateien vorhanden.">
+                    @foreach (var image in _article?.Images ?? [])
+                    {
+                        <tr>
+                            <th scope="row" class="font-mono">@image.FileName</th>
+                            <td>@image.Type</td>
+                            <td>@(image.ColorId?.ToString() ?? "—")</td>
+                            <td>@image.SortOrder</td>
+                            <td>
+                                <span
+                                    class="badge badge-sm @(image.IsDeleted ? "badge-error badge-soft" : "badge-ghost")">@(image.IsDeleted
+                                    ? "Ja" : "Nein")
+                                </span>
+                            </td>
+                        </tr>
+                    }
+                </DataTable>
+            </DataPanel>
+
+            <DataPanel Title="Merkmale & Beziehungen" Icon="network">
+                <dl class="grid gap-x-6 gap-y-4 sm:grid-cols-2">
+                    @if (_isLoading)
+                    {
+                        <div class="space-y-2 motion-reduce:*:animate-none">
+                            <dt class="skeleton h-3 w-32"></dt>
+                            <dd class="skeleton h-5 w-24"></dd>
+                        </div>
+                    }
+                    else
+                    {
+                        @foreach (var trait in _article?.Attributes ?? [])
+                        {
+                            <DetailField
+                                Label="@($"{trait.AttributeTypeName} · Typ {trait.AttributeType} / Merkmal {trait.Number}")">
+                                @trait.Name
+                            </DetailField>
+                        }
+                    }
+                    @foreach (var (label, numbers) in new[] { ("Verwandter Artikel", _relateds), ("Zubehör", _accessories)
+                })
+                    {
+                        <DetailField Label="@label" Loading="@_isLoading">
+                            @if (numbers.Length == 0)
+                            {
+                                <span>—</span>
+                            }
+                            else
+                            {
+                                <div class="flex flex-wrap gap-2">
+                                    @foreach (var number in numbers)
+                                    {
+                                        <a class="link font-mono" href="/article-detail/@number">@number</a>
+                                    }
+                                </div>
+                            }
+                        </DetailField>
+                    }
+                </dl>
+            </DataPanel>
+        </div>
+    }
+</main>

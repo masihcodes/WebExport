@@ -103,90 +103,97 @@
 <main class="mx-auto w-full min-w-0 max-w-7xl space-y-6 p-5 sm:p-8">
     <PortalHeading Section="Dashboard" Title="Ihr Sortiment in Zahlen" Icon="layout-dashboard"
                    Tenant="@Session.Tenant?.Name">
+
         <div class="flex flex-wrap items-center gap-3">
             @if (_lastFetch is { } latest)
             {
-                <span class="text-xs text-base-content/70">Letzter Abruf <time
-                    datetime="@latest.ToString("O")">@latest.ToString("HH:mm") UTC</time></span>
+                <span class="text-xs text-base-content/70">
+                    Letzter Abruf <time datetime="@latest.ToString("O")">@latest.ToString("HH:mm") UTC</time>
+                </span>
+            }
+            <button type="button" class="btn btn-sm border-base-content/15 bg-base-100/80" disabled="@_loading"
+                    @onclick="RefreshAsync">
+                @if (_loading)
+                {
+                    <span class="loading loading-spinner loading-xs motion-reduce:animate-none"></span>
                 }
-                <button type="button" class="btn btn-sm border-base-content/15 bg-base-100/80" disabled="@_loading"
-                        @onclick="RefreshAsync">
-                    @if (_loading)
-                    {
-                        <span aria-hidden="true" class="loading loading-spinner loading-xs motion-reduce:animate-none"></span>
-                    }
-                    else
-                    {
-                        <LucideIcon Name="refresh-cw" Size="15" aria-hidden="true" />
-                    }
-                    Aktualisieren
-                </button>
-            </div>
-        </PortalHeading>
-        <span class="sr-only" role="status">@(_loading ? "Dashboard wird aktualisiert." : "Datenabruf abgeschlossen.")</span>
+                else
+                {
+                    <LucideIcon Name="refresh-cw" Size="15" />
+                }
+                Aktualisieren
+            </button>
+        </div>
+    </PortalHeading>
 
-        <DashboardOverview Summary="@_summary.Data" Error="@_summary.Error" />
-        <div class="grid items-start gap-6 xl:grid-cols-12">
-            <div class="min-w-0 xl:col-span-7">
-                <DashboardBranches Branches="@_branches.Data" Error="@_branches.Error" />
-            </div>
-            <div class="min-w-0 xl:col-span-5">
-                <DashboardCategories Categories="@_categories.Data" Error="@_categories.Error" />
-            </div>
+    <span class="sr-only" role="status">@(_loading ? "Dashboard wird aktualisiert." : "Datenabruf abgeschlossen.")</span>
+
+    <DashboardOverview Summary="@_summary.Data" Error="@_summary.Error" />
+
+    <div class="grid items-start gap-6 xl:grid-cols-12">
+        <div class="min-w-0 xl:col-span-7">
+            <DashboardBranches Branches="@_branches.Data" Error="@_branches.Error" />
         </div>
-        <div class="grid items-start gap-6 lg:grid-cols-2">
-            <DashboardQuality Quality="@_quality.Data" Summary="@_summary.Data" Error="@_quality.Error" />
-            <DataPanel Title="Zuletzt geänderte Artikel" Icon="history">
-                <div aria-busy="@(_recent.IsLoading ? "true" : "false")">
-                    @if (_recent.Error is not null)
-                    {
-                        <div class="alert alert-error alert-soft" role="alert">
-                            <LucideIcon Name="circle-alert" Size="18" aria-hidden="true" /> @_recent.Error
-                        </div>
-                    }
-                    else if (_recent.Data is { Length: 0 })
-                    {
-                        <p class="text-sm text-base-content/70">Keine Artikel vorhanden.</p>
-                    }
-                    else
-                    {
-                        <ul class="divide-y divide-base-content/10">
-                            @if (_recent.Data is null)
-                            {
-                                @for (var row = 0; row < 5; row++)
-                                {
-                                    <li class="flex h-16 items-center justify-between gap-3" aria-hidden="true">
-                                        <span class="skeleton h-5 w-2/5 motion-reduce:animate-none"></span>
-                                        <span class="skeleton h-4 w-16 motion-reduce:animate-none"></span>
-                                    </li>
-                                }
-                            }
-                            else
-                            {
-                                @foreach (var article in _recent.Data)
-                                {
-                                    var utc = article.ModifiedAt.ToUniversalTime();
-                                    <li @key="article.ArticleNumber">
-                                        <a href="@($"/article-detail/{Uri.EscapeDataString(article.ArticleNumber)}")"
-                                           class="group flex min-h-16 items-center gap-3 rounded-field px-1 py-2 hover:bg-base-200/60 focus-visible:outline-primary">
-                                            <span class="min-w-0 flex-1">
-                                                <span
-                                                class="block wrap-anywhere font-semibold group-hover:underline">@article.Name</span>
-                                                <span class="text-xs text-base-content/65">@article.ArticleNumber</span>
-                                            </span>
-                                            <time datetime="@utc.ToString("O")"
-                                                  class="shrink-0 text-end text-xs tabular-nums text-base-content/70">
-                                                @utc.ToString("dd.MM.yyyy")<br />@utc.ToString("HH:mm") UTC
-                                            </time>
-                                            <LucideIcon Name="chevron-right" Size="15" Class="shrink-0 text-base-content/50"
-                                                        aria-hidden="true" />
-                                        </a>
-                                    </li>
-                                }
-                            }
-                        </ul>
-                    }
-                </div>
-            </DataPanel>
+        <div class="min-w-0 xl:col-span-5">
+            <DashboardCategories Categories="@_categories.Data" Error="@_categories.Error" />
         </div>
-    </main>
+    </div>
+
+    <div class="grid items-start gap-6 lg:grid-cols-2">
+
+        <DashboardQuality Quality="@_quality.Data" Summary="@_summary.Data" Error="@_quality.Error" />
+
+        <DataPanel Title="Zuletzt geänderte Artikel" Icon="history">
+
+            <div aria-busy="@(_recent.IsLoading ? "true" : "false")">
+                @if (_recent.Error is not null)
+                {
+                    <div class="alert alert-error alert-soft" role="alert">
+                        <LucideIcon Name="circle-alert" Size="18" /> @_recent.Error
+                    </div>
+                }
+                else if (_recent.Data is { Length: 0 })
+                {
+                    <p class="text-sm text-base-content/70">Keine Artikel vorhanden.</p>
+                }
+                else
+                {
+                    <ul class="divide-y divide-base-content/10">
+                        @if (_recent.Data is null)
+                        {
+                            @for (var row = 0; row < 5; row++)
+                            {
+                                <li class="flex h-16 items-center justify-between gap-3">
+                                    <span class="skeleton h-5 w-2/5 motion-reduce:animate-none"></span>
+                                    <span class="skeleton h-4 w-16 motion-reduce:animate-none"></span>
+                                </li>
+                            }
+                        }
+                        else
+                        {
+                            @foreach (var article in _recent.Data)
+                            {
+                                var utc = article.ModifiedAt.ToUniversalTime();
+                                <li @key="article.ArticleNumber">
+                                    <a href="@($"/article-detail/{Uri.EscapeDataString(article.ArticleNumber)}")"
+                                       class="group flex min-h-16 items-center gap-3 rounded-field px-1 py-2 hover:bg-base-200/60 focus-visible:outline-primary">
+                                        <span class="min-w-0 flex-1">
+                                            <span
+                                            class="block wrap-anywhere font-semibold group-hover:underline">@article.Name</span>
+                                            <span class="text-xs text-base-content/65">@article.ArticleNumber</span>
+                                        </span>
+                                        <time datetime="@utc.ToString("O")"
+                                              class="shrink-0 text-end text-xs tabular-nums text-base-content/70">
+                                            @utc.ToString("dd.MM.yyyy")<br />@utc.ToString("HH:mm") UTC
+                                        </time>
+                                        <LucideIcon Name="chevron-right" Size="15" Class="shrink-0 text-base-content/50" />
+                                    </a>
+                                </li>
+                            }
+                        }
+                    </ul>
+                }
+            </div>
+        </DataPanel>
+    </div>
+</main>

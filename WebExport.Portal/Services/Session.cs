@@ -11,6 +11,7 @@ public class Session
     public bool IsAuthenticated => Current is not null && !string.IsNullOrWhiteSpace(Current.AccessToken) && Current.ExpiresAt > DateTime.UtcNow;
     public string? ApiKey { get; private set; }
     public string ClientId { get; private set; } = "";
+    public string Theme { get; set; } = "";
 
 
 
@@ -30,6 +31,13 @@ public class Session
     public void SetTenant(TenantResponseDto tenant)
     {
         Tenant = tenant;
+        Changed?.Invoke();
+    }
+
+
+    public void SetTheme(string theme)
+    {
+        Theme = theme;
         Changed?.Invoke();
     }
 

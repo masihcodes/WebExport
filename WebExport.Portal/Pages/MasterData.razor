@@ -314,31 +314,33 @@
             ];
             var active = tabs.First(tab => tab.Value == _activeTab);
         }
-        <div role="group" aria-label="Stammdatenbereiche" class="tabs tabs-box w-fit max-w-full gap-1">
+
+        <div role="group" class="tabs tabs-box w-fit max-w-full gap-1">
             @foreach (var tab in tabs)
             {
                 <button type="button" id="master-tab-@tab.Value" aria-controls="master-data-panel"
                         class="tab gap-2 @(tab.Value == _activeTab ? "tab-active" : "")"
                         aria-pressed="@(tab.Value == _activeTab ? "true" : "false")" disabled="@_isLoading"
                         @onclick="() => SelectTabAsync(tab.Value)">
-                    <LucideIcon Name="@tab.Icon" Size="16" aria-hidden="true" /> @tab.Label
+                    <LucideIcon Name="@tab.Icon" Size="16" /> @tab.Label
                 </button>
             }
         </div>
 
         <span class="sr-only" role="status">@(_isLoading ? "Stammdaten werden geladen …" : "")</span>
+
         <section id="master-data-panel" aria-labelledby="master-tab-@active.Value"
                  aria-busy="@(_isLoading ? "true" : "false")" class="min-w-0">
             @if (!string.IsNullOrWhiteSpace(_error))
             {
                 <div class="alert alert-error alert-soft" role="alert">
-                    <LucideIcon Name="circle-alert" Size="20" aria-hidden="true" /> <span>@_error</span>
+                    <LucideIcon Name="circle-alert" Size="20" /> <span>@_error</span>
                 </div>
             }
             else if (!_isLoading && active.Count == 0)
             {
                 <div class="alert alert-soft" role="status">
-                    <LucideIcon Name="inbox" Size="20" aria-hidden="true" /> <span>Keine Einträge gefunden.</span>
+                    <LucideIcon Name="inbox" Size="20" /> <span>Keine Einträge gefunden.</span>
                 </div>
             }
             else if (_activeTab == MasterDataTab.Colors)
@@ -348,7 +350,7 @@
                     {
                         @for (var tile = 0; tile < 4; tile++)
                         {
-                            <div class="card overflow-hidden border border-base-content/10" aria-hidden="true">
+                            <div class="card overflow-hidden border border-base-content/10">
                                 <div class="skeleton h-24 w-full rounded-none motion-reduce:animate-none"></div>
                                 <div class="card-body gap-2 p-4">
                                     <span class="skeleton h-5 w-1/2 motion-reduce:animate-none"></span>
@@ -362,7 +364,7 @@
                         @foreach (var color in _colors ?? [])
                         {
                             <article class="card overflow-hidden border border-base-content/10 bg-base-100/60">
-                                <div class="h-24 border-b border-base-content/10" aria-hidden="true"
+                                <div class="h-24 border-b border-base-content/10"
                                      style="@($"background-color: rgb({color.Red}, {color.Green}, {color.Blue})")"></div>
                                 <div class="card-body gap-2 p-4">
                                     <div class="flex flex-wrap items-center justify-between gap-2">
@@ -390,6 +392,7 @@
                 };
 
                 <DataTable Caption="@caption" Headings="@headings" Loading="@_isLoading">
+                    
                     @switch (_activeTab)
                     {
                         case MasterDataTab.Sizes:

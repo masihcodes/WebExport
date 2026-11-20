@@ -1,8 +1,20 @@
-<nav class="flex flex-wrap items-center justify-between gap-3 text-sm" aria-label="Seitennavigation">
+@code {
+    [Parameter] public int First { get; set; }
+    [Parameter] public int Last { get; set; }
+    [Parameter] public int Total { get; set; }
+    [Parameter] public int Page { get; set; }
+    [Parameter] public int Pages { get; set; }
+    [Parameter] public bool Loading { get; set; }
+    [Parameter] public EventCallback Previous { get; set; }
+    [Parameter] public EventCallback Next { get; set; }
+}
+
+
+<nav class="flex flex-wrap items-center justify-between gap-3 text-sm">
     <span class="text-base-content/70" aria-live="polite">
         @if (Loading)
         {
-            <span class="skeleton block h-4 w-32 motion-reduce:animate-none" aria-hidden="true"></span>
+            <span class=" skeleton block h-4 w-32 motion-reduce:animate-none"></span>
         }
         else if (Total > 0)
         {
@@ -15,12 +27,13 @@
     </span>
     <div class="join items-stretch">
         <button type="button" class="btn btn-sm join-item" disabled="@(Loading || Page <= 1)" @onclick="Previous">
-            <LucideIcon Name="chevron-left" Size="15" aria-hidden="true" /> Zurück
+            <LucideIcon Name="chevron-left" Size="15" /> Zurück
         </button>
-        <span class="join-item grid place-items-center border border-base-content/10 bg-base-100 px-2 text-xs tabular-nums">
+        <span
+            class="join-item grid place-items-center border border-base-content/10 bg-base-100 px-2 text-xs tabular-nums">
             @if (Loading)
             {
-                <span class="skeleton h-3 w-12 motion-reduce:animate-none" aria-hidden="true"></span>
+                <span class="skeleton h-3 w-12 motion-reduce:animate-none"></span>
             }
             else if (Pages > 0)
             {
@@ -32,18 +45,9 @@
             }
         </span>
         <button type="button" class="btn btn-sm join-item" disabled="@(Loading || Page >= Pages)" @onclick="Next">
-            Weiter <LucideIcon Name="chevron-right" Size="15" aria-hidden="true" />
+            Weiter
+            <LucideIcon Name="chevron-right" Size="15" />
         </button>
     </div>
 </nav>
 
-@code {
-    [Parameter] public int First { get; set; }
-    [Parameter] public int Last { get; set; }
-    [Parameter] public int Total { get; set; }
-    [Parameter] public int Page { get; set; }
-    [Parameter] public int Pages { get; set; }
-    [Parameter] public bool Loading { get; set; }
-    [Parameter] public EventCallback Previous { get; set; }
-    [Parameter] public EventCallback Next { get; set; }
-}

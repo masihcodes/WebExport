@@ -1,18 +1,26 @@
 @using System.Globalization
 
+@code {
+    [Parameter] public DashboardContentQualityDto? Quality { get; set; }
+    [Parameter] public DashboardSummaryDto? Summary { get; set; }
+    [Parameter] public string? Error { get; set; }
+
+    private static readonly CultureInfo German = CultureInfo.GetCultureInfo("de-DE");
+}
+
 <DataPanel Title="Qualität der Artikeldaten" Icon="clipboard-check" Class="h-full">
     @if (!string.IsNullOrWhiteSpace(Error))
     {
         <div class="alert alert-error alert-soft" role="alert">
-            <LucideIcon Name="circle-alert" Size="18" aria-hidden="true" /> @Error
+            <LucideIcon Name="circle-alert" Size="18" /> @Error
         </div>
     }
     else if (Quality is null)
     {
-        <div class="space-y-5" aria-busy="true" aria-label="Qualitätsdaten werden geladen">
+        <div class="space-y-5" aria-busy="true">
             @for (var i = 0; i < 3; i++)
             {
-                <div class="space-y-2" aria-hidden="true">
+                <div class="space-y-2">
                     <div class="skeleton h-4 w-2/5 motion-reduce:animate-none"></div>
                     <div class="skeleton h-2 w-full motion-reduce:animate-none"></div>
                 </div>
@@ -51,12 +59,15 @@
                             <strong>@count.ToString("N0", German)</strong>
                             @if (hasDenominator)
                             {
-                                <span class="ms-1 text-xs text-base-content/70">@((count / (double)articleCount).ToString("0.# %", German))</span>
+                                <span class="ms-1 text-xs text-base-content/70">
+                                    @((count / (double)articleCount).ToString("0.# %", German))
+                                </span>
                             }
                         </dd>
-                        <dd class="col-span-2 flex" aria-hidden="true">
+                        <dd class="col-span-2 flex">
                             <progress class="progress progress-warning h-2 w-full" value="@count"
-                                      max="@(hasDenominator ? articleCount : Math.Max(1, largestCount))"></progress>
+                                      max="@(hasDenominator ? articleCount : Math.Max(1, largestCount))">
+                            </progress>
                         </dd>
                     </div>
                 }
@@ -67,11 +78,3 @@
         }
     }
 </DataPanel>
-
-@code {
-    [Parameter] public DashboardContentQualityDto? Quality { get; set; }
-    [Parameter] public DashboardSummaryDto? Summary { get; set; }
-    [Parameter] public string? Error { get; set; }
-
-    private static readonly CultureInfo German = CultureInfo.GetCultureInfo("de-DE");
-}

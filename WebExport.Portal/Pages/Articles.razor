@@ -321,6 +321,7 @@
                    Headings="@(new[] { "Artikel-Nr.", "Bezeichnung / Kollektion", "Hersteller", "Kategorie", "Status", "Geändert (UTC)", "Details" })"
                    Loading="@_isLoading" HasRows="@(_articlesPage?.Data.Count > 0)" Error="@_articlesError"
                    EmptyMessage="Keine Artikel gefunden.">
+
             @foreach (var article in _articlesPage?.Data ?? [])
             {
                 <tr>
@@ -351,6 +352,7 @@
                     </td>
                 </tr>
             }
+            
         </DataTable>
 
         <div class="flex flex-wrap items-center gap-x-5 gap-y-3">

@@ -103,14 +103,14 @@
 <main class="mx-auto w-full max-w-7xl space-y-6 p-5 sm:p-8" aria-busy="@(_isLoading ? "true" : "false")">
     <header class="space-y-3">
         <span class="badge badge-outline gap-2 border-primary/25 bg-base-100/40 text-primary">
-            <LucideIcon Name="layout-dashboard" Size="14" aria-hidden="true" /> Datenportal · Status
+            <LucideIcon Name="layout-dashboard" Size="14" /> Datenportal · Status
         </span>
         <p class="text-3xl font-semibold leading-tight tracking-tight sm:text-4xl">Ihre Daten. Auf einen Blick.</p>
         <p class="flex min-h-5 items-center gap-2 text-sm text-base-content/70">
-            <LucideIcon Name="building-2" Size="16" aria-hidden="true" />
+            <LucideIcon Name="building-2" Size="16" />
             @if (_isLoading)
             {
-                <span class="skeleton h-4 w-40 motion-reduce:animate-none" aria-hidden="true"></span>
+                <span class="skeleton h-4 w-40 motion-reduce:animate-none"></span>
             }
             else
             {
@@ -122,7 +122,7 @@
     @if (!string.IsNullOrWhiteSpace(_error))
     {
         <div class="alert alert-error alert-soft" role="alert">
-            <LucideIcon Name="circle-alert" Size="20" aria-hidden="true" />
+            <LucideIcon Name="circle-alert" Size="20" />
             <span>@_error</span>
         </div>
     }
@@ -147,7 +147,7 @@
             class="card min-w-0 border border-base-content/10 bg-base-100/80 backdrop-blur-md shadow xl:col-span-3">
             <div class="card-body gap-6 p-5 sm:p-6">
                 <h2 class="card-title gap-3 text-lg">
-                    <LucideIcon Name="key-round" Size="21" Class="text-primary" aria-hidden="true" /> Ihr Datenzugang
+                    <LucideIcon Name="key-round" Size="21" Class="text-primary" /> Ihr Datenzugang
                 </h2>
                 <dl class="grid gap-x-8 gap-y-6 text-sm sm:grid-cols-2">
                     @foreach (var (label, value, loading) in new[]
@@ -164,7 +164,7 @@
                             <dd class="min-h-5 wrap-break-word font-medium">
                                 @if (loading)
                                 {
-                                    <span class="skeleton block h-5 w-32 motion-reduce:animate-none" aria-hidden="true"></span>
+                                    <span class="skeleton block h-5 w-32 motion-reduce:animate-none"></span>
                                 }
                                 else
                                 {
@@ -177,51 +177,52 @@
                         <dt class="text-xs text-base-content/70">Umgebung</dt>
                         <dd>
                             <span class="badge badge-ghost gap-2">
-                                <LucideIcon Name="flask-conical" Size="13" aria-hidden="true" /> Lokale Testumgebung
+                                <LucideIcon Name="flask-conical" Size="13" /> Lokale Testumgebung
                             </span>
                         </dd>
                     </div>
                 </dl>
                 <div class="alert border-base-content/10 bg-base-200/60 text-sm text-base-content/70 shadow-none"
                      role="note">
-                    <LucideIcon Name="info" Size="20" Class="text-primary" aria-hidden="true" />
-                    <span>Der Mandant wird durch den angemeldeten Client bestimmt. Die Filialauswahl schränkt die
-                        Bestandsanzeige ein.</span>
-                    </div>
+                    <LucideIcon Name="info" Size="20" Class="text-primary" />
+                    <span>
+                        Der Mandant wird durch den angemeldeten Client bestimmt. Die Filialauswahl schränkt die
+                        Bestandsanzeige ein.
+                    </span>
                 </div>
-            </section>
+            </div>
+        </section>
 
-            <section
-                class="card min-w-0 border border-base-content/10 bg-base-100/80 backdrop-blur-md shadow xl:col-span-2">
-                <div class="card-body gap-6 p-5 sm:p-6">
-                    <h2 class="card-title gap-3 text-lg">
-                        <LucideIcon Name="arrow-up-right" Size="21" Class="text-primary" aria-hidden="true" /> Direkt zu
-                        Ihren Daten
-                    </h2>
-                    <ul class="menu w-full gap-3 p-0">
-                        @foreach (var (href, icon, title, description) in new[]
-                        {
+        <section
+            class="card min-w-0 border border-base-content/10 bg-base-100/80 backdrop-blur-md shadow xl:col-span-2">
+            <div class="card-body gap-6 p-5 sm:p-6">
+                <h2 class="card-title gap-3 text-lg">
+                    <LucideIcon Name="arrow-up-right" Size="21" Class="text-primary" /> Direkt zu
+                    Ihren Daten
+                </h2>
+                <ul class="menu w-full gap-3 p-0">
+                    @foreach (var (href, icon, title, description) in new[]
+                    {
                         ("/dashboard", "layout-dashboard", "Dashboard öffnen", "Kennzahlen, Filialen und Datenqualität"),
                         ("/articles", "package-search", "Artikel ansehen", "Sortiment, Varianten und Details"),
                         ("/prices-stock", "tags", "Preise & Bestände", "Kompakte Übersicht je SKU"),
                         ("/categories", "folder-tree", "Kategorien erkunden", "Von der Struktur zum Artikel")
                     })
-                        {
-                            <li>
-                                <a href="@href"
-                                   class="flex min-h-20 gap-3 rounded-box border border-base-content/10 bg-base-100/30 p-4">
-                                    <LucideIcon Name="@icon" Size="22" Class="shrink-0 text-primary" aria-hidden="true" />
-                                    <span class="min-w-0 flex-1">
-                                        <span class="block font-semibold">@title</span>
-                                        <span class="mt-1 block text-xs font-normal text-base-content/70">@description</span>
-                                    </span>
-                                    <LucideIcon Name="arrow-right" Size="17" Class="shrink-0 text-base-content/50"
-                                                aria-hidden="true" />
-                                </a>
-                            </li>
-                        }
-                    </ul>
-                </div>
-            </section>
-        </div>
-    </main>
+                    {
+                        <li>
+                            <a href="@href"
+                               class="flex min-h-20 gap-3 rounded-box border border-base-content/10 bg-base-100/30 p-4">
+                                <LucideIcon Name="@icon" Size="22" Class="shrink-0 text-primary" />
+                                <span class="min-w-0 flex-1">
+                                    <span class="block font-semibold">@title</span>
+                                    <span class="mt-1 block text-xs font-normal text-base-content/70">@description</span>
+                                </span>
+                                <LucideIcon Name="arrow-right" Size="17" Class="shrink-0 text-base-content/50" />
+                            </a>
+                        </li>
+                    }
+                </ul>
+            </div>
+        </section>
+    </div>
+</main>
