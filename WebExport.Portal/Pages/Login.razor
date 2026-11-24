@@ -186,12 +186,13 @@
                     Secret / API-Schlüssel anzeigen
                 </label>
 
-                <div class="aura-md aura aura-glow duration-100 w-full">
+                <div
+                    class="aura-md aura aura-glow duration-100 w-full text-primary @(_isLoading ? "cursor-progress opacity-50" : "")">
                     <button type="submit" disabled="@_isLoading" class="btn btn-neutral w-full">
                         @if (_isLoading)
                         {
-                            <span class="loading loading-bars loading-sm"></span>
-                            <span>Anmeldung läuft …</span>
+                            <span class="loading loading-bars loading-sm text-base-100/60"></span>
+                            <span class="text-base-100/60">Anmeldung läuft …</span>
                         }
                         else
                         {

@@ -1,5 +1,6 @@
 ﻿@page "/status"
 @layout PortalLayout
+@implements IDisposable
 
 @inject HttpClient Http
 @inject NavigationManager Navi
@@ -12,11 +13,22 @@
 
 
 @code {
+    private readonly CancellationTokenSource _ct = new();
     private TenantResponseDto? _tenant;
     private StatusResponseDto? _statusResponse;
     private bool _isLoading;
     private string? _error;
 
+    private int _min = 0;
+    private int _sec = 0;
+
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+        @* _ = CountDown(); *@
+        _ = CountDownAsync(_ct.Token);
+    }
 
     protected override async Task OnInitializedAsync()
     {
@@ -92,6 +104,55 @@
         }
     }
 
+    private async Task CountDownAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            while (!cancellationToken.IsCancellationRequested && Session.Current is { } current)
+            {
+                int seconds = Math.Max(0, (int)Math.Ceiling((current.ExpiresAt - DateTime.UtcNow).TotalSeconds));
+
+                Session.Seconds = seconds;
+                _min = seconds / 60;
+                _sec = seconds % 60;
+                await InvokeAsync(StateHasChanged);
+
+                if (seconds == 0)
+                    break;
+
+                await Task.Delay(1000, cancellationToken);
+            }
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            // The component stopped the countdown.
+        }
+    }
+
+    public void Dispose()
+    {
+        _ct.Cancel();
+        _ct.Dispose();
+    }
+
+
+    @* private async Task CountDown()
+    {
+        while (Session.Current is { } current)
+        {
+            int seconds = Math.Max(0, (int)Math.Ceiling((current.ExpiresAt - DateTime.UtcNow).TotalSeconds));
+
+            Session.Seconds = seconds;
+            _min = seconds / 60;
+            _sec = seconds % 60;
+            StateHasChanged();
+
+            if (seconds == 0)
+                break;
+            
+            await Task.Delay(1000);
+        }
+    } *@
 }
 
 <PageTitle>Status</PageTitle>
@@ -165,6 +226,24 @@
                                 @if (loading)
                                 {
                                     <span class="skeleton block h-5 w-32 motion-reduce:animate-none"></span>
+                                }
+                                else if (label == "Sitzung")
+                                {
+                                    <span class="grid auto-cols-max grid-flow-col gap-5 text-center">
+                                        <div class="bg-neutral rounded-box text-neutral-content flex flex-col p-2">
+                                            <span class="countdown font-mono text-md">
+                                                <span style="--value:@_min;" aria-live="polite" aria-label="@_min">@_min</span>
+                                            </span>
+                                            min
+                                        </div>
+                                        <div class="bg-neutral rounded-box text-neutral-content flex flex-col p-2">
+                                            <span class="countdown font-mono text-md">
+                                                <span style="--value:@_sec;" aria-live="polite" aria-label="@_sec">@_sec</span>
+                                            </span>
+                                            sec
+                                        </div>
+                                    </span>
+                                    
                                 }
                                 else
                                 {

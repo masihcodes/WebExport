@@ -26,7 +26,7 @@ public class ArticleService(AppDbContext db) : IArticleService
             articlesQuery = articlesQuery.Where(article => !article.IsDeleted);
 
         if (!string.IsNullOrWhiteSpace(query.ArticleNumber))
-            articlesQuery = articlesQuery.Where(article => article.ArticleNumber.Contains(query.ArticleNumber));
+            articlesQuery = articlesQuery.Where(article => EF.Functions.ILike(article.ArticleNumber, $"%{query.ArticleNumber}%"));
 
 
         if (query.Category.HasValue)

@@ -13,6 +13,7 @@ public class Session
     public string ClientId { get; private set; } = "";
     public string Theme { get; set; } = "";
 
+    public int Seconds { get; set; } = 0;
 
 
     // Set Tenant Credentials in Session
@@ -49,6 +50,7 @@ public class Session
         ApiKey = null;
         ClientId = "";
         Tenant = null;
+        Seconds = 0;
 
         Changed?.Invoke();
     }

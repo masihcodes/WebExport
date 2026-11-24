@@ -21,21 +21,18 @@ public class StockService(AppDbContext db) : IStockService
         var resQuery = db.BranchStocks.Where(bs => bs.Branch.TenantNumber == tenantNumber && bs.Sku.Article.TenantNumber == tenantNumber);
 
         if (!string.IsNullOrWhiteSpace(query.ArticleNumber))
-        {
-            resQuery = resQuery.Where(x => x.Sku.Article.ArticleNumber.Contains(query.ArticleNumber));
-        }
+            resQuery = resQuery.Where(bs => EF.Functions.ILike(bs.Sku.Article.ArticleNumber, $"%{query.ArticleNumber}%"));
+
         if (query.Branch is not null)
-        {
-            resQuery = resQuery.Where(x => x.Branch.Number == query.Branch);
-        }
+            resQuery = resQuery.Where(bs => bs.Branch.Number == query.Branch);
+
         if (!string.IsNullOrWhiteSpace(query.Sku))
-        {
-            resQuery = resQuery.Where(x => x.Sku.SkuNumber.Contains(query.Sku));
-        }
+            resQuery = resQuery.Where(bs => EF.Functions.ILike(bs.Sku.SkuNumber, $"%{query.Sku}%"));
+
         if (query.ModifiedSince is DateTimeOffset modifiedSince)
         {
             var modifiedSinceUtc = modifiedSince.ToUniversalTime();
-            resQuery = resQuery.Where(x => x.ModifiedAt >= modifiedSinceUtc);
+            resQuery = resQuery.Where(bs => bs.ModifiedAt >= modifiedSinceUtc);
         }
 
 
@@ -82,7 +79,7 @@ public class StockService(AppDbContext db) : IStockService
 
         if (!string.IsNullOrWhiteSpace(query.ArticleNumber))
         {
-            resQuery = resQuery.Where(sku => sku.Article.ArticleNumber.Contains(query.ArticleNumber));
+            resQuery = resQuery.Where(sku => EF.Functions.ILike(sku.Article.ArticleNumber, $"%{query.ArticleNumber}%"));
         }
         if (query.ModifiedSince is DateTimeOffset modifiedSince)
         {
